@@ -7,6 +7,10 @@
 	import UppyUploader from '$lib/components/UppyUploader.svelte';
 	import { env } from '$env/dynamic/public';
 	import type { PhotoDto } from '$lib/api/types';
+	import { PhotoUrlBuilder } from '$lib/domain/photo/PhotoUrlBuilder';
+	import { PhotoFileSizeFormatter } from '$lib/domain/photo/PhotoFileSizeFormatter';
+	import { FolderNameValidator } from '$lib/domain/folder/FolderNameValidator';
+	import { UploadConfiguration } from '$lib/domain/shared/UploadConfiguration';
 
 	$: folderId = $page.params.folderId;
 	$: folders = foldersQuery();
@@ -15,23 +19,29 @@
 	const createFolder = createFolderMutation();
 	const queryClient = useQueryClient();
 
-	// Helper to build image URL - uses thumbnail if available for better performance
-	function getImageUrl(photo: PhotoDto): string {
-		const apiUrl = env.PUBLIC_API_URL || 'http://localhost:8888';
-		// Use thumbnail for grid display (300x300, ~4KB) instead of full image (~17KB)
-		// Falls back to full image if thumbnail not available (old photos)
-		return photo.thumbnailUrl
-			? `${apiUrl}${photo.thumbnailUrl}`
-			: `${apiUrl}/api/photos/${photo.id}/file`;
-	}
+	// Initialize domain services
+	const apiBaseUrl = env.PUBLIC_API_URL || 'http://localhost:8888';
+	const photoUrlBuilder = new PhotoUrlBuilder(apiBaseUrl);
+
+	// Build upload endpoint using domain service
+	$: uploadEndpoint = UploadConfiguration.buildUploadEndpoint(apiBaseUrl, folderId);
 
 	let showUploader = false;
 
 	function handleNewFolder() {
 		const name = prompt('Enter folder name:');
-		if (name && name.trim()) {
-			$createFolder.mutate({ name: name.trim() });
+		if (!name) return;
+
+		// Validate folder name using domain service
+		const validation = FolderNameValidator.validate(name);
+		if (!validation.isValid) {
+			alert(validation.error);
+			return;
 		}
+
+		// Use sanitized name
+		const sanitizedName = FolderNameValidator.sanitize(name);
+		$createFolder.mutate({ name: sanitizedName });
 	}
 
 	function handleUploadComplete(event: CustomEvent) {
@@ -45,10 +55,13 @@
 		showUploader = false;
 	}
 
-	$: uploadEndpoint = `${env.PUBLIC_API_URL}/api/folders/${folderId}/photos`;
+	function getImageUrl(photo: PhotoDto): string {
+		return photoUrlBuilder.buildDisplayUrl(photo);
+	}
 
-	// TODO: Replace with actual authenticated user ID once auth is implemented
-	const defaultOwnerId = '00000000-0000-0000-0000-000000000000';
+	function formatFileSize(sizeInBytes: number): string {
+		return PhotoFileSizeFormatter.toMegabytes(sizeInBytes);
+	}
 </script>
 
 <div class="explorer">
@@ -92,10 +105,10 @@
 				<div class="uploader-container">
 					<UppyUploader
 						endpoint={uploadEndpoint}
-						fieldName="photo"
-						formData={{ ownerId: defaultOwnerId }}
-						allowedTypes={['image/jpeg', 'image/png', 'image/gif', 'image/webp']}
-						maxFileSize={20971520}
+						fieldName={UploadConfiguration.UPLOAD_FIELD_NAME}
+						formData={{ ownerId: UploadConfiguration.DEFAULT_OWNER_ID }}
+						allowedTypes={UploadConfiguration.ALLOWED_MIME_TYPES}
+						maxFileSize={UploadConfiguration.MAX_FILE_SIZE_BYTES}
 						on:complete={handleUploadComplete}
 					/>
 				</div>
@@ -126,7 +139,7 @@
 								/>
 								<div class="photo-info">
 									<span class="photo-name">{photo.fileName}</span>
-									<span class="photo-size">{(photo.sizeInBytes / 1024 / 1024).toFixed(2)} MB</span>
+									<span class="photo-size">{formatFileSize(photo.sizeInBytes)}</span>
 								</div>
 							</div>
 						{/each}
