@@ -49,7 +49,7 @@
 				name: sanitizedName,
 				ownerId: UploadConfiguration.DEFAULT_OWNER_ID
 			});
-			alert(`Folder "${sanitizedName}" created successfully!`);
+			// Folder list will refresh automatically via TanStack Query invalidation
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : 'Failed to create folder';
 			alert(`Error: ${errorMsg}`);
