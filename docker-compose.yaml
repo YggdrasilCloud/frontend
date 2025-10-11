@@ -11,9 +11,7 @@ services:
       - .:/app
       - /app/node_modules
     environment:
-      - PUBLIC_API_URL=http://host.docker.internal:8888
+      - PUBLIC_API_URL=http://localhost:8888
       - DOCKER_ENV=true
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     command: npm run dev
     restart: unless-stopped

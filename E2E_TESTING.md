@@ -10,17 +10,18 @@
 │                                                          │
 │  ┌──────────────────┐        ┌──────────────────────┐  │
 │  │ Playwright Tests │───────▶│  Frontend (Docker)   │  │
-│  │  (localhost)     │        │  host.docker.internal│  │
-│  └──────────────────┘        │  :5173               │  │
-│           │                  └──────────────────────┘  │
+│  │  (localhost)     │        │  localhost:5173      │  │
+│  └──────────────────┘        └──────────────────────┘  │
 │           │                            │                │
+│           │  Browser accesses:         │                │
+│           │  localhost:5173 (frontend) │                │
+│           │  localhost:8888 (API)      │                │
 │           │                            │                │
 │           └────────────────────────────┼────────────────┤
 │                                        │                │
 │                   ┌────────────────────▼─────┐          │
-│                   │  API Backend (Docker)    │          │
-│                   │  host.docker.internal    │          │
-│                   │  :8888                   │          │
+│                   │  API Backend             │          │
+│                   │  localhost:8888          │          │
 │                   └──────────────────────────┘          │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -57,19 +58,17 @@ npx playwright install
 
 ### Step 2: Configure Environment
 
-The frontend Docker container is configured to use `host.docker.internal` to access the host's API:
+The frontend Docker container is configured to access the API on the host machine:
 
 **docker-compose.yaml:**
 
 ```yaml
 environment:
-  - PUBLIC_API_URL=http://host.docker.internal:8888
+  - PUBLIC_API_URL=http://localhost:8888
   - DOCKER_ENV=true
-extra_hosts:
-  - 'host.docker.internal:host-gateway'
 ```
 
-This allows the frontend running in Docker to call the API on your host machine at `localhost:8888`.
+**Important:** We use `localhost:8888` because the JavaScript code runs in YOUR browser (on the host), not inside the Docker container. The browser needs to access the API directly on the host.
 
 ### Step 3: Run Tests
 
@@ -150,11 +149,15 @@ docker compose logs -f frontend
 
 In CI, both frontend and API need to be started. See `.github/workflows/ci.yml` for the CI configuration.
 
-## Why host.docker.internal?
+## Why localhost instead of host.docker.internal?
 
-- `localhost` inside a Docker container refers to the container itself
-- `host.docker.internal` is a special DNS name that resolves to the host machine
-- This allows containers to access services running on the host (your API at localhost:8888)
+When you open the frontend in your browser:
+
+- The browser runs on YOUR computer (the host), not inside Docker
+- The JavaScript code executes in the browser context
+- Therefore, `localhost` in API calls refers to your host machine, where the API runs on port 8888
+
+**Note:** `host.docker.internal` only works INSIDE Docker containers, not in your browser.
 
 ## CI/CD Configuration
 

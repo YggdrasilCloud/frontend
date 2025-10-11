@@ -72,16 +72,14 @@ services:
     ports:
       - '5173:5173'
     environment:
-      - PUBLIC_API_URL=http://host.docker.internal:8888
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
+      - PUBLIC_API_URL=http://localhost:8888
 ```
 
-**Why `host.docker.internal`?**
+**Why `localhost:8888`?**
 
-- Allows the Docker container to access services on your host machine
-- Your API runs on `localhost:8888` (host)
-- Docker container accesses it via `host.docker.internal:8888`
+- The frontend JavaScript runs in YOUR browser (on the host), not inside Docker
+- The browser needs to access the API directly on your host machine
+- Therefore we use `localhost:8888` to point to the API running on the host
 
 ### Project Structure
 
