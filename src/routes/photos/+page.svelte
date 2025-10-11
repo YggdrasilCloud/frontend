@@ -11,7 +11,7 @@
 	// Reactive computations using domain services
 	$: errorMessage = $folders.isError ? ApiErrorFormatter.formatError($folders.error) : '';
 
-	function handleNewFolder() {
+	async function handleNewFolder() {
 		const name = prompt('Enter folder name:');
 		if (!name) return;
 
@@ -24,7 +24,15 @@
 
 		// Use sanitized name
 		const sanitizedName = FolderNameValidator.sanitize(name);
-		$createFolder.mutate({ name: sanitizedName });
+
+		try {
+			await $createFolder.mutateAsync({ name: sanitizedName });
+			alert(`Folder "${sanitizedName}" created successfully!`);
+		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : 'Failed to create folder';
+			alert(`Error: ${errorMsg}`);
+			console.error('Failed to create folder:', error);
+		}
 	}
 
 	function formatCreationDate(isoDate: string): string {
