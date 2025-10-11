@@ -11,6 +11,8 @@ export interface PhotoDto {
 	mimeType: string;
 	sizeInBytes: number;
 	uploadedAt: string;
+	fileUrl: string;
+	thumbnailUrl: string | null; // null for old photos without thumbnails
 }
 
 export interface ListPhotosResponse {
