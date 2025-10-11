@@ -14,8 +14,10 @@
 	export let fieldName: string = 'file'; // Field name for the file in the POST request
 	export let formData: Record<string, string> = {}; // Additional form data to send with the upload
 
+	import type { UppyFile } from '@uppy/core';
+
 	const dispatch = createEventDispatcher<{
-		complete: { successful: any[]; failed: any[] };
+		complete: { successful: UppyFile[]; failed: UppyFile[] };
 		progress: { progress: number };
 		error: { error: Error };
 	}>();

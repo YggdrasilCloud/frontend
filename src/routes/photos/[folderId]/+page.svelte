@@ -66,11 +66,7 @@
 					<p class="status-message">No folders yet</p>
 				{:else}
 					{#each $folders.data as folder}
-						<a
-							href="/photos/{folder.id}"
-							class="folder-item"
-							class:active={folder.id === folderId}
-						>
+						<a href="/photos/{folder.id}" class="folder-item" class:active={folder.id === folderId}>
 							📁 {folder.name}
 						</a>
 					{/each}
@@ -125,9 +121,7 @@
 								/>
 								<div class="photo-info">
 									<span class="photo-name">{photo.fileName}</span>
-									<span class="photo-size"
-										>{(photo.sizeInBytes / 1024 / 1024).toFixed(2)} MB</span
-									>
+									<span class="photo-size">{(photo.sizeInBytes / 1024 / 1024).toFixed(2)} MB</span>
 								</div>
 							</div>
 						{/each}
@@ -231,13 +225,6 @@
 		padding: var(--spacing-lg);
 	}
 
-	.placeholder {
-		color: var(--color-text-secondary);
-		font-style: italic;
-		text-align: center;
-		padding: var(--spacing-xl);
-	}
-
 	.folder-item {
 		display: block;
 		padding: var(--spacing-md);
@@ -262,10 +249,6 @@
 		padding: var(--spacing-md);
 		text-align: center;
 		font-size: 0.9rem;
-	}
-
-	.status-message.error {
-		color: var(--color-error);
 	}
 
 	.grid {

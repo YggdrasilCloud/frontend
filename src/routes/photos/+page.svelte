@@ -34,7 +34,8 @@
 				<details class="error-details">
 					<summary>Technical details</summary>
 					<p class="error-message">
-						{$folders.error.message.includes('NetworkError') || $folders.error.message.includes('Failed to fetch')
+						{$folders.error.message.includes('NetworkError') ||
+						$folders.error.message.includes('Failed to fetch')
 							? 'Unable to connect to the API. Make sure the backend is running.'
 							: `API Error: ${$folders.error.message}`}
 					</p>
@@ -123,10 +124,6 @@
 		color: var(--color-text-secondary);
 		padding: var(--spacing-xl);
 		font-size: 1rem;
-	}
-
-	.status-message.error {
-		color: var(--color-error);
 	}
 
 	.welcome {
