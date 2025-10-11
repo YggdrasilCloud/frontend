@@ -70,7 +70,7 @@ npm run dev
 Create a `.env` file in the root directory:
 
 ```env
-PUBLIC_API_URL=http://localhost:8000
+PUBLIC_API_URL=http://localhost:8888
 ```
 
 ## Development
