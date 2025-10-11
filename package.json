@@ -18,6 +18,10 @@
 		"test:run": "vitest run",
 		"test:coverage": "vitest run --coverage",
 		"test:mutation": "stryker run",
+		"test:e2e": "playwright test",
+		"test:e2e:ui": "playwright test --ui",
+		"test:e2e:debug": "playwright test --debug",
+		"test:e2e:report": "playwright show-report reports/playwright",
 		"prepare": "husky || true"
 	},
 	"lint-staged": {
@@ -39,6 +43,7 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.37.0",
+		"@playwright/test": "^1.56.0",
 		"@stryker-mutator/core": "^9.2.0",
 		"@stryker-mutator/vitest-runner": "^9.2.0",
 		"@sveltejs/adapter-auto": "^3.3.1",
