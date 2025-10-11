@@ -14,10 +14,12 @@ export interface PhotoDto {
 }
 
 export interface ListPhotosResponse {
-	items: PhotoDto[];
-	total: number;
-	page: number;
-	perPage: number;
+	data: PhotoDto[];
+	pagination: {
+		page: number;
+		perPage: number;
+		total: number;
+	};
 }
 
 export interface CreateFolderRequest {
