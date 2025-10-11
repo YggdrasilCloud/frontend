@@ -1,6 +1,12 @@
 # Development stage
 FROM node:22-alpine AS development
 
+# Install git for lint-staged
+RUN apk add --no-cache git
+
+# Configure git to trust the /app directory
+RUN git config --global --add safe.directory /app
+
 WORKDIR /app
 
 # Install dependencies
