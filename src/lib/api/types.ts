@@ -26,6 +26,7 @@ export interface ListPhotosResponse {
 
 export interface CreateFolderRequest {
 	name: string;
+	ownerId: string;
 }
 
 export interface UploadPhotoResponse {

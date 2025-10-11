@@ -4,6 +4,7 @@
 	import { DateFormatter } from '$lib/domain/shared/DateFormatter';
 	import { ApiErrorFormatter } from '$lib/domain/error/ApiErrorFormatter';
 	import { FolderNameValidator } from '$lib/domain/folder/FolderNameValidator';
+	import { UploadConfiguration } from '$lib/domain/shared/UploadConfiguration';
 
 	const folders = foldersQuery();
 	const createFolder = createFolderMutation();
@@ -26,7 +27,10 @@
 		const sanitizedName = FolderNameValidator.sanitize(name);
 
 		try {
-			await $createFolder.mutateAsync({ name: sanitizedName });
+			await $createFolder.mutateAsync({
+				name: sanitizedName,
+				ownerId: UploadConfiguration.DEFAULT_OWNER_ID
+			});
 			alert(`Folder "${sanitizedName}" created successfully!`);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : 'Failed to create folder';

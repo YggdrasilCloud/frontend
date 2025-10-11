@@ -45,7 +45,10 @@
 		const sanitizedName = FolderNameValidator.sanitize(name);
 
 		try {
-			await $createFolder.mutateAsync({ name: sanitizedName });
+			await $createFolder.mutateAsync({
+				name: sanitizedName,
+				ownerId: UploadConfiguration.DEFAULT_OWNER_ID
+			});
 			alert(`Folder "${sanitizedName}" created successfully!`);
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : 'Failed to create folder';
