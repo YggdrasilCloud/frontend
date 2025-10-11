@@ -5,6 +5,7 @@
 	import { photosQuery } from '$lib/api/queries/photos';
 	import { createFolderMutation } from '$lib/api/mutations/createFolder';
 	import UppyUploader from '$lib/components/UppyUploader.svelte';
+	import Lightbox from '$lib/components/Lightbox.svelte';
 	import { env } from '$env/dynamic/public';
 	import type { PhotoDto } from '$lib/api/types';
 	import { PhotoUrlBuilder } from '$lib/domain/photo/PhotoUrlBuilder';
@@ -27,6 +28,7 @@
 	$: uploadEndpoint = UploadConfiguration.buildUploadEndpoint(apiBaseUrl, folderId);
 
 	let showUploader = false;
+	let selectedPhoto: PhotoDto | null = null;
 
 	function handleNewFolder() {
 		const name = prompt('Enter folder name:');
@@ -61,6 +63,21 @@
 
 	function formatFileSize(sizeInBytes: number): string {
 		return PhotoFileSizeFormatter.toMegabytes(sizeInBytes);
+	}
+
+	function openLightbox(photo: PhotoDto) {
+		selectedPhoto = photo;
+	}
+
+	function closeLightbox() {
+		selectedPhoto = null;
+	}
+
+	function handlePhotoKeydown(event: KeyboardEvent, photo: PhotoDto) {
+		if (event.key === 'Enter' || event.key === ' ') {
+			event.preventDefault();
+			openLightbox(photo);
+		}
 	}
 </script>
 
@@ -129,7 +146,13 @@
 				{:else}
 					<div class="grid">
 						{#each $photos.data.data as photo}
-							<div class="photo-card">
+							<div
+								class="photo-card"
+								on:click={() => openLightbox(photo)}
+								on:keydown={(e) => handlePhotoKeydown(e, photo)}
+								role="button"
+								tabindex="0"
+							>
 								<img
 									src={getImageUrl(photo)}
 									alt={photo.fileName}
@@ -155,6 +178,10 @@
 		</div>
 	</main>
 </div>
+
+{#if selectedPhoto && $photos.data}
+	<Lightbox photo={selectedPhoto} photos={$photos.data.data} {apiBaseUrl} onClose={closeLightbox} />
+{/if}
 
 <style>
 	.explorer {
@@ -280,11 +307,17 @@
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
 		overflow: hidden;
-		transition: box-shadow 0.2s;
+		transition: all 0.2s;
+		cursor: pointer;
 	}
 
 	.photo-card:hover {
 		box-shadow: var(--shadow-md);
+		transform: translateY(-2px);
+	}
+
+	.photo-card:active {
+		transform: translateY(0);
 	}
 
 	.photo-card img {
