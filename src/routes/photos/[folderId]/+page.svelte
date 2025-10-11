@@ -34,15 +34,15 @@
 		const name = prompt('Enter folder name:');
 		if (!name) return;
 
-		// Validate folder name using domain service
-		const validation = FolderNameValidator.validate(name);
+		// Sanitize first (trim whitespace, clean forbidden chars)
+		const sanitizedName = FolderNameValidator.sanitize(name);
+
+		// Then validate the sanitized name
+		const validation = FolderNameValidator.validate(sanitizedName);
 		if (!validation.isValid) {
 			alert(validation.error);
 			return;
 		}
-
-		// Use sanitized name
-		const sanitizedName = FolderNameValidator.sanitize(name);
 
 		try {
 			await $createFolder.mutateAsync({

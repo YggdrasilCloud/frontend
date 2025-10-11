@@ -148,11 +148,13 @@ describe('FolderNameValidator', () => {
 			expect(result.isValid).toBe(true);
 		});
 
-		it('should reject names with leading/trailing whitespace', () => {
-			const result = FolderNameValidator.validate('  My Photos  ');
+		it('should accept names already trimmed (workflow: sanitize then validate)', () => {
+			// The proper workflow is: sanitize() first, then validate()
+			const sanitized = FolderNameValidator.sanitize('  My Photos  ');
+			const result = FolderNameValidator.validate(sanitized);
 
-			expect(result.isValid).toBe(false);
-			expect(result.error).toBe('Folder name cannot start or end with whitespace');
+			expect(sanitized).toBe('My Photos');
+			expect(result.isValid).toBe(true);
 		});
 	});
 

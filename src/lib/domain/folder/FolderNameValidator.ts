@@ -62,14 +62,6 @@ export class FolderNameValidator {
 			};
 		}
 
-		// Vérifier qu'il ne commence/termine pas par un espace
-		if (trimmedName !== name) {
-			return {
-				isValid: false,
-				error: 'Folder name cannot start or end with whitespace'
-			};
-		}
-
 		return {
 			isValid: true
 		};
