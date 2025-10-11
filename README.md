@@ -85,44 +85,34 @@ PUBLIC_API_URL=http://localhost:8888
 
 ## Development
 
-### Running Commands
-
-**All npm commands should be run inside Docker** to maintain consistency with the PHP backend approach:
+**Quick Start:**
 
 ```bash
-# Start development server
+# Start development server (in Docker)
 docker compose up
 
-# Run any npm command
-docker compose exec frontend npm run build
-docker compose exec frontend npm run check
-docker compose exec frontend npm run lint
-
-# Install/update dependencies
-docker compose exec frontend npm install <package>
-
-# After adding dependencies, rebuild the container
-docker compose up -d --build
+# Frontend available at http://localhost:5173
 ```
 
-### Commands (when running locally without Docker)
+**Common Commands:**
 
 ```bash
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-
 # Type checking
-npm run check
+docker compose exec frontend npm run check
 
 # Linting
-npm run lint
+docker compose exec frontend npm run lint
+
+# Unit tests
+docker compose exec frontend npm run test:run
+
+# E2E tests (run on HOST, not in Docker)
+npm run test:e2e
 ```
+
+**Important:** E2E tests run on your host machine, not in Docker. See [E2E_TESTING.md](./E2E_TESTING.md) for setup.
+
+For detailed development workflow, troubleshooting, and architecture, see [DEVELOPMENT.md](./DEVELOPMENT.md).
 
 ## Testing
 
@@ -145,13 +135,28 @@ docker compose exec frontend npm test
 
 ### E2E Tests
 
+**Important:** E2E tests run on your **host machine**, not in Docker.
+
 ```bash
+# Prerequisites (one-time setup)
+npm install
+npx playwright install --with-deps  # Requires sudo
+
 # Run E2E tests
-docker compose exec frontend npm run test:e2e
+npm run test:e2e
 
 # Run E2E tests in UI mode
-docker compose exec frontend npm run test:e2e:ui
+npm run test:e2e:ui
+
+# Run specific browser only
+npm run test:e2e -- --project=chromium
 ```
+
+**Why not in Docker?** Playwright requires full browser installations and system dependencies that are not available in Alpine Linux containers.
+
+**No sudo access?** E2E tests will run automatically in GitHub Actions CI/CD where sudo is available (currently disabled until API backend is configured in CI).
+
+See [E2E_TESTING.md](./E2E_TESTING.md) for detailed setup and troubleshooting.
 
 ### Mutation Testing
 

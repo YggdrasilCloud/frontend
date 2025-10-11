@@ -1,5 +1,7 @@
 # E2E Testing Guide
 
+> **Important:** E2E tests run **OUTSIDE Docker** on your host machine, not inside the Docker container.
+
 ## Architecture Overview
 
 ```
@@ -40,8 +42,18 @@ Playwright tests **cannot run inside the Docker container** because:
 ```bash
 # On your host machine (outside Docker)
 npm install
+
+# Install Playwright browsers (requires sudo for system dependencies)
 npx playwright install --with-deps
+
+# If you don't have sudo access, install without dependencies:
+npx playwright install
+# Note: Tests may fail if system dependencies are missing
 ```
+
+**Why sudo?** Playwright needs to install system libraries (libgbm, libgtk, etc.) for the browsers to work.
+
+**Alternative: Run E2E tests in CI only** - If you can't install Playwright locally, the tests will run automatically in GitHub Actions where sudo is available.
 
 ### Step 2: Configure Environment
 
@@ -143,6 +155,54 @@ In CI, both frontend and API need to be started. See `.github/workflows/ci.yml` 
 - `localhost` inside a Docker container refers to the container itself
 - `host.docker.internal` is a special DNS name that resolves to the host machine
 - This allows containers to access services running on the host (your API at localhost:8888)
+
+## CI/CD Configuration
+
+### Current Status
+
+**E2E tests are currently DISABLED in CI** (`if: false` in `.github/workflows/ci.yml`)
+
+**Reason:** The tests require the API backend to be running, which is not currently configured in CI.
+
+### To Enable E2E Tests in CI
+
+You need to add the API backend as a service. Example configuration:
+
+```yaml
+test-e2e:
+  name: E2E Tests
+  runs-on: ubuntu-latest
+  services:
+    api:
+      image: your-api-image:latest
+      ports:
+        - 8888:8888
+      env:
+        DATABASE_URL: sqlite:///:memory:
+        # Add other API environment variables
+  steps:
+    # ... existing steps
+```
+
+Or use Docker Compose in CI:
+
+```yaml
+- name: Start services
+  run: |
+    # Start API backend
+    cd ../api && docker compose up -d
+
+    # Wait for API to be ready
+    npx wait-on http://localhost:8888/api/health
+```
+
+### CI Test Results
+
+Once enabled, E2E test results will be:
+
+- ✅ Visible in the Actions tab
+- 📊 HTML reports uploaded as artifacts
+- 📝 Available for download for 30 days
 
 ## Running Full Test Suite
 
