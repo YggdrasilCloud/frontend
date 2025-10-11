@@ -14,3 +14,5 @@ CLAUDE.md
 coverage/
 reports/
 .stryker-tmp/
+test-results/
+playwright-report/
