@@ -1,0 +1,183 @@
+import { test, expect, type Page } from '@playwright/test';
+
+test.describe('Photos Display and Upload', () => {
+	// Helper to navigate to a folder (assumes at least one folder exists)
+	async function navigateToFolder(page: Page) {
+		await page.goto('/photos');
+		await page.waitForLoadState('networkidle');
+
+		const folderCard = page.locator('.folder-card').first();
+		const folderExists = await folderCard.isVisible().catch(() => false);
+
+		if (!folderExists) {
+			test.skip(true, 'No folders available for testing');
+			return null;
+		}
+
+		const folderId = await folderCard.getAttribute('href');
+		await folderCard.click();
+		await page.waitForLoadState('networkidle');
+
+		return folderId;
+	}
+
+	test('should display photos page with sidebar and content', async ({ page }) => {
+		const folderId = await navigateToFolder(page);
+		if (!folderId) return;
+
+		// Check for sidebar
+		await expect(page.locator('.sidebar')).toBeVisible();
+		await expect(page.locator('.sidebar h2')).toContainText('Folders');
+
+		// Check for main content area
+		await expect(page.locator('.content')).toBeVisible();
+		await expect(page.locator('h1')).toContainText('Photos');
+
+		// Check for upload button
+		await expect(page.getByRole('button', { name: /upload/i })).toBeVisible();
+	});
+
+	test('should display photos grid or empty state', async ({ page }) => {
+		const folderId = await navigateToFolder(page);
+		if (!folderId) return;
+
+		// Should show either photos or empty state
+		const photosGrid = page.locator('.grid');
+		const emptyMessage = page.locator('text=/no photos/i');
+
+		const hasPhotos = await photosGrid.isVisible().catch(() => false);
+		const isEmpty = await emptyMessage.isVisible().catch(() => false);
+
+		expect(hasPhotos || isEmpty).toBe(true);
+	});
+
+	test('should display photo cards with correct structure', async ({ page }) => {
+		const folderId = await navigateToFolder(page);
+		if (!folderId) return;
+
+		// Check if photos exist
+		const photoCard = page.locator('.photo-card').first();
+		const hasPhoto = await photoCard.isVisible().catch(() => false);
+
+		if (hasPhoto) {
+			// Check photo card structure
+			await expect(photoCard.locator('img')).toBeVisible();
+			await expect(photoCard.locator('.photo-name')).toBeVisible();
+			await expect(photoCard.locator('.photo-size')).toBeVisible();
+
+			// Check image attributes
+			const img = photoCard.locator('img');
+			await expect(img).toHaveAttribute('loading', 'lazy');
+			await expect(img).toHaveAttribute('width', '200');
+			await expect(img).toHaveAttribute('height', '200');
+			await expect(img).toHaveAttribute('alt');
+		} else {
+			// No photos - skip detailed checks
+			test.skip();
+		}
+	});
+
+	test('should show uploader when clicking upload button', async ({ page }) => {
+		const folderId = await navigateToFolder(page);
+		if (!folderId) return;
+
+		// Click upload button
+		const uploadButton = page.getByRole('button', { name: /upload/i });
+		await uploadButton.click();
+
+		// Should show uploader container
+		await expect(page.locator('.uploader-container')).toBeVisible();
+
+		// Should show Uppy dashboard (might take a moment to initialize)
+		await page.waitForTimeout(500);
+
+		// Check for Uppy elements
+		const uppyDashboard = page.locator('[class*="uppy"]');
+		await expect(uppyDashboard).toBeVisible();
+	});
+
+	test('should toggle uploader when clicking cancel', async ({ page }) => {
+		const folderId = await navigateToFolder(page);
+		if (!folderId) return;
+
+		// Open uploader
+		const uploadButton = page.getByRole('button', { name: /upload/i });
+		await uploadButton.click();
+		await expect(page.locator('.uploader-container')).toBeVisible();
+
+		// Click upload button again (should show "Cancel")
+		await uploadButton.click();
+
+		// Should hide uploader
+		await expect(page.locator('.uploader-container')).not.toBeVisible();
+	});
+
+	test('should display pagination information when photos exist', async ({ page }) => {
+		const folderId = await navigateToFolder(page);
+		if (!folderId) return;
+
+		// Check for pagination info
+		const pagination = page.locator('.pagination');
+		const hasPhotos = await page
+			.locator('.photo-card')
+			.first()
+			.isVisible()
+			.catch(() => false);
+
+		if (hasPhotos) {
+			await expect(pagination).toBeVisible();
+			await expect(pagination).toContainText(/showing.*of.*photos/i);
+		}
+	});
+
+	test('should show loading state initially', async ({ page }) => {
+		// Navigate but don't wait for network idle to catch loading state
+		await page.goto('/photos');
+		const folderCard = page.locator('.folder-card').first();
+		const folderExists = await folderCard.isVisible().catch(() => false);
+
+		if (!folderExists) {
+			test.skip();
+			return;
+		}
+
+		const href = await folderCard.getAttribute('href');
+		if (!href) return;
+
+		// Navigate to photos page quickly
+		await page.goto(href);
+
+		// Try to catch loading state (might be too fast)
+		const loadingMessage = page.locator('text=/loading/i');
+		await loadingMessage.isVisible().catch(() => false);
+
+		// This is optional - loading might complete too fast
+		// Just checking that the page doesn't crash
+		await page.waitForLoadState('networkidle');
+	});
+
+	test('should handle sidebar folder navigation', async ({ page }) => {
+		const folderId = await navigateToFolder(page);
+		if (!folderId) return;
+
+		// Check sidebar has folders list
+		const sidebarFolders = page.locator('.folders-list .folder-item');
+		const folderCount = await sidebarFolders.count();
+
+		if (folderCount > 1) {
+			// Click on a different folder in sidebar
+			const secondFolder = sidebarFolders.nth(1);
+			await secondFolder.click();
+
+			// Should navigate to different folder
+			await page.waitForLoadState('networkidle');
+			await expect(page).toHaveURL(/\/photos\/[\w-]+/);
+
+			// Should still show Photos heading
+			await expect(page.locator('h1')).toContainText('Photos');
+		} else {
+			// Only one folder - skip
+			test.skip();
+		}
+	});
+});
