@@ -6,6 +6,7 @@
 	import { createFolderMutation } from '$lib/api/mutations/createFolder';
 	import UppyUploader from '$lib/components/UppyUploader.svelte';
 	import { env } from '$env/dynamic/public';
+	import type { PhotoDto } from '$lib/api/types';
 
 	$: folderId = $page.params.folderId;
 	$: folders = foldersQuery();
@@ -14,10 +15,14 @@
 	const createFolder = createFolderMutation();
 	const queryClient = useQueryClient();
 
-	// Helper to build full image URL using the photo file endpoint
-	function getImageUrl(photoId: string): string {
+	// Helper to build image URL - uses thumbnail if available for better performance
+	function getImageUrl(photo: PhotoDto): string {
 		const apiUrl = env.PUBLIC_API_URL || 'http://localhost:8888';
-		return `${apiUrl}/api/photos/${photoId}/file`;
+		// Use thumbnail for grid display (300x300, ~4KB) instead of full image (~17KB)
+		// Falls back to full image if thumbnail not available (old photos)
+		return photo.thumbnailUrl
+			? `${apiUrl}${photo.thumbnailUrl}`
+			: `${apiUrl}/api/photos/${photo.id}/file`;
 	}
 
 	let showUploader = false;
@@ -113,7 +118,7 @@
 						{#each $photos.data.data as photo}
 							<div class="photo-card">
 								<img
-									src={getImageUrl(photo.id)}
+									src={getImageUrl(photo)}
 									alt={photo.fileName}
 									loading="lazy"
 									width="200"
