@@ -9,6 +9,7 @@ Frontend web pour YggdrasilCloud, une application de gestion de photos construit
 ### Stack choisie
 
 **Framework principal : SvelteKit**
+
 - **Raison** : Performance maximale avec compilation vers vanilla JS (pas de virtual DOM)
 - **Avantages** :
   - Bundle ultra-léger (meilleure performance que React/Vue)
@@ -17,6 +18,7 @@ Frontend web pour YggdrasilCloud, une application de gestion de photos construit
   - Réactivité native sans boilerplate
 
 **Gestion d'état et cache : TanStack Query (@tanstack/svelte-query)**
+
 - **Raison** : Gestion professionnelle du cache et des requêtes API
 - **Features utilisées** :
   - Cache automatique avec invalidation intelligente
@@ -27,6 +29,7 @@ Frontend web pour YggdrasilCloud, une application de gestion de photos construit
   - Garbage collection à 5 minutes
 
 **Upload de fichiers : Uppy**
+
 - **Raison** : Meilleur uploader moderne, framework-agnostic
 - **Features** :
   - Drag & drop natif
@@ -42,6 +45,7 @@ Frontend web pour YggdrasilCloud, une application de gestion de photos construit
   - Destruction propre dans `onDestroy`
 
 **Drag & Drop : svelte-dnd-action**
+
 - **Raison** : Meilleure bibliothèque drag & drop pour Svelte
 - **Usage prévu** :
   - Réorganisation de dossiers
@@ -49,6 +53,7 @@ Frontend web pour YggdrasilCloud, une application de gestion de photos construit
   - Support tactile (mobile)
 
 **Virtualisation : svelte-virtual-list**
+
 - **Raison** : Performance pour afficher des milliers de photos
 - **Usage** : Grilles de photos et listes de dossiers
 - **Bénéfice** : Seuls les éléments visibles sont rendus dans le DOM
@@ -182,9 +187,7 @@ interface ListPhotosResponse {
 
 <form on:submit|preventDefault={handleSubmit}>
 	<input name="name" required />
-	<button type="submit" disabled={$mutation.isPending}>
-		Créer
-	</button>
+	<button type="submit" disabled={$mutation.isPending}> Créer </button>
 </form>
 ```
 
@@ -233,6 +236,7 @@ Le serveur de développement Vite sera accessible sur `http://localhost:5173` av
 ### Multi-stage build
 
 Le Dockerfile utilise un build multi-stage :
+
 1. **development** : Node 22 Alpine avec Vite dev server
 2. **builder** : Compile l'application pour la production
 3. **production** : Image optimisée avec seulement les dépendances de prod
@@ -242,10 +246,12 @@ Le Dockerfile utilise un build multi-stage :
 ### Pourquoi multi-repo (API séparée du frontend) ?
 
 **Contexte** : YggdrasilCloud doit supporter plusieurs clients :
+
 - Application web (ce repo)
 - Application mobile Android (futur)
 
 **Avantages de la séparation** :
+
 - ✅ API = source de vérité indépendante des clients
 - ✅ Déploiement indépendant (web sur CDN, API sur serveur)
 - ✅ Développement parallèle (web, Android)
@@ -255,6 +261,7 @@ Le Dockerfile utilise un build multi-stage :
 ### Pourquoi Uppy plutôt qu'une solution custom ?
 
 **Avantages d'Uppy** :
+
 - ✅ Features professionnelles (chunks, retry, progress)
 - ✅ Framework-agnostic (pas besoin de wrapper React)
 - ✅ Bien maintenu et testé en production
@@ -262,6 +269,7 @@ Le Dockerfile utilise un build multi-stage :
 - ✅ Support des gros fichiers avec chunks
 
 **Alternative considérée** : FilePond
+
 - Plus "Svelte-friendly" mais moins de features
 - Pas de support natif des chunks
 - Conclusion : Uppy est plus complet pour un gestionnaire de photos
@@ -269,6 +277,7 @@ Le Dockerfile utilise un build multi-stage :
 ### Pourquoi TanStack Query plutôt qu'un cache maison ?
 
 **Avantages TanStack Query** :
+
 - ✅ Moins de code à maintenir
 - ✅ Cache automatique avec invalidation intelligente
 - ✅ Prefetching pour améliorer la performance
@@ -277,6 +286,7 @@ Le Dockerfile utilise un build multi-stage :
 - ✅ Bundle léger (~13kb)
 
 **Cache maison** :
+
 - ❌ Plus de code à écrire et maintenir
 - ❌ Risque de bugs (invalidation, race conditions)
 - ❌ Pas de prefetching out-of-the-box
@@ -286,22 +296,26 @@ Le Dockerfile utilise un build multi-stage :
 ### Pourquoi SvelteKit plutôt que React/Vue ?
 
 **Performance** :
+
 - ✅ Svelte compile vers vanilla JS (pas de runtime)
 - ✅ Bundle plus léger que React/Vue
 - ✅ Pas de virtual DOM = moins de calculs
 
 **Developer Experience** :
+
 - ✅ Code plus concis (moins de boilerplate)
 - ✅ Réactivité native (`$:` pour les computed values)
 - ✅ Stores intégrés sans bibliothèque externe
 
 **SvelteKit** :
+
 - ✅ SSR/SPA hybride
 - ✅ Routing file-based intégré
 - ✅ Load functions pour le data fetching
 - ✅ Adapters pour déployer partout (Node, Vercel, Netlify, statique)
 
 **Alternative considérée** : React + Chonky
+
 - Chonky = bibliothèque de gestionnaire de fichiers clé en main
 - Mais écosystème React plus lourd
 - Conclusion : On peut recréer les fonctionnalités de Chonky avec Svelte + Uppy + svelte-dnd-action
@@ -309,6 +323,7 @@ Le Dockerfile utilise un build multi-stage :
 ## Fonctionnalités prévues
 
 ### Phase 1 (MVP) - En cours
+
 - [x] Structure du projet
 - [x] Client API avec TanStack Query
 - [x] Composant Uppy pour upload
@@ -317,6 +332,7 @@ Le Dockerfile utilise un build multi-stage :
 - [ ] Création de dossiers
 
 ### Phase 2
+
 - [ ] Sélection multiple (Ctrl+Clic, Shift+Clic)
 - [ ] Drag & drop pour réorganiser
 - [ ] Prévisualisation des photos (lightbox)
@@ -324,12 +340,14 @@ Le Dockerfile utilise un build multi-stage :
 - [ ] Filtres (date, taille, type)
 
 ### Phase 3
+
 - [ ] Extraction et affichage des métadonnées EXIF
 - [ ] Géolocalisation sur carte
 - [ ] Albums virtuels
 - [ ] Partage de photos
 
 ### Phase 4
+
 - [ ] Mode hors-ligne (PWA)
 - [ ] Synchronisation avec l'app Android
 - [ ] Export bulk (ZIP)
@@ -340,6 +358,7 @@ Le Dockerfile utilise un build multi-stage :
 **Référence UI** : FileRun, Nextcloud Photos
 
 **Caractéristiques** :
+
 - Arborescence de dossiers à gauche
 - Grille de photos au centre
 - Barre d'outils en haut (nouveau dossier, upload, vue)
@@ -348,6 +367,7 @@ Le Dockerfile utilise un build multi-stage :
 - Prévisualisation au clic
 
 **Différence avec Ext.js** :
+
 - Ext.js était une bibliothèque commerciale (Sencha) avec des composants riches
 - Notre stack moderne (Svelte + Uppy + svelte-dnd-action) offre les mêmes fonctionnalités en open-source
 - Performance meilleure avec Svelte (pas de framework lourd)
@@ -355,6 +375,7 @@ Le Dockerfile utilise un build multi-stage :
 ## Documentation API
 
 L'API backend expose une documentation OpenAPI/Swagger accessible sur :
+
 ```
 http://localhost:8000/api/doc
 ```
@@ -368,14 +389,15 @@ Le backend Symfony doit être configuré pour accepter les requêtes cross-origi
 ```yaml
 # api/config/packages/nelmio_cors.yaml
 nelmio_cors:
-    defaults:
-        origin_regex: true
-        allow_origin: ['%env(CORS_ALLOW_ORIGIN)%']
-        allow_methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
-        allow_headers: ['Content-Type', 'Authorization']
+  defaults:
+    origin_regex: true
+    allow_origin: ['%env(CORS_ALLOW_ORIGIN)%']
+    allow_methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+    allow_headers: ['Content-Type', 'Authorization']
 ```
 
 Regex CORS pour développement + production :
+
 ```
 ^https?://(localhost|.*\.yggdrasil\.cloud)(:[0-9]+)?$
 ```
@@ -392,6 +414,7 @@ Regex CORS pour développement + production :
 ### Gestion du token
 
 Le token peut être stocké :
+
 - **Option 1** : LocalStorage (simple mais pas sécurisé pour XSS)
 - **Option 2** : Cookie httpOnly (plus sécurisé, géré par le backend)
 - **Option 3** : Memory + refresh token (best practice)
@@ -449,6 +472,7 @@ Le token peut être stocké :
 ### Git workflow
 
 Commits simples et descriptifs (pas de conventional commits) :
+
 ```
 Configure Docker setup
 Add TanStack Query integration

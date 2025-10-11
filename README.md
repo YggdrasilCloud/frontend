@@ -31,17 +31,20 @@ Modern photo management web application built with SvelteKit.
 ### With Docker (Recommended)
 
 1. Clone the repository:
+
 ```bash
 git clone git@github.com:YggdrasilCloud/frontend.git
 cd frontend
 ```
 
 2. Create environment file:
+
 ```bash
 cp .env.example .env
 ```
 
 3. Start the development server:
+
 ```bash
 docker compose up
 ```
@@ -51,16 +54,19 @@ docker compose up
 ### Without Docker
 
 1. Install dependencies:
+
 ```bash
 npm install
 ```
 
 2. Create environment file:
+
 ```bash
 cp .env.example .env
 ```
 
 3. Start the development server:
+
 ```bash
 npm run dev
 ```
