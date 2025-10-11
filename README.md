@@ -75,6 +75,28 @@ PUBLIC_API_URL=http://localhost:8000
 
 ## Development
 
+### Running Commands
+
+**All npm commands should be run inside Docker** to maintain consistency with the PHP backend approach:
+
+```bash
+# Start development server
+docker compose up
+
+# Run any npm command
+docker compose exec frontend npm run build
+docker compose exec frontend npm run check
+docker compose exec frontend npm run lint
+
+# Install/update dependencies
+docker compose exec frontend npm install <package>
+
+# After adding dependencies, rebuild the container
+docker compose up -d --build
+```
+
+### Commands (when running locally without Docker)
+
 ```bash
 # Start development server
 npm run dev
