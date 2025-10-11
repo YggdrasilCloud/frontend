@@ -77,14 +77,14 @@ test.describe('Folder Creation', () => {
 		const nameWithSpaces = `  ${baseName}  `;
 		let promptShown = false;
 
-		// Listen for prompt and alerts (errors only, no success alerts)
+		// Listen for prompt (no error alert should appear)
 		page.on('dialog', async (dialog) => {
 			if (dialog.type() === 'prompt') {
 				promptShown = true;
 				await dialog.accept(nameWithSpaces);
 			} else if (dialog.type() === 'alert') {
-				// Accept any error alerts
-				await dialog.accept();
+				// Should NOT receive any alert - automatic sanitization
+				throw new Error(`Unexpected alert: ${dialog.message()}`);
 			}
 		});
 
