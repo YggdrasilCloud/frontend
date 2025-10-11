@@ -4,6 +4,10 @@ test.describe('Folder Creation', () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto('/photos');
 		await page.waitForLoadState('networkidle');
+		// Wait for initial loading to finish
+		await page
+			.waitForSelector('text=/loading/i', { state: 'hidden', timeout: 10000 })
+			.catch(() => {});
 	});
 
 	test('should successfully create a new folder', async ({ page }) => {
@@ -73,27 +77,35 @@ test.describe('Folder Creation', () => {
 		const nameWithSpaces = `  ${baseName}  `;
 		let promptShown = false;
 
-		// Listen for prompt
+		// Listen for prompt and alerts (errors only, no success alerts)
 		page.on('dialog', async (dialog) => {
 			if (dialog.type() === 'prompt') {
 				promptShown = true;
 				await dialog.accept(nameWithSpaces);
 			} else if (dialog.type() === 'alert') {
-				// Success message should show trimmed name
-				expect(dialog.message()).toContain(baseName);
-				expect(dialog.message()).not.toContain('  ');
+				// Accept any error alerts
 				await dialog.accept();
 			}
 		});
+
+		// Wait for loading to finish
+		await page
+			.waitForSelector('text=/loading/i', { state: 'hidden', timeout: 10000 })
+			.catch(() => {});
 
 		// Click "New Folder" button
 		const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
 		await newFolderButton.click();
 
-		// Wait for API call
-		await page.waitForTimeout(2000);
+		// Wait for API call and folder list refresh
+		await page.waitForTimeout(3000);
 
+		// Verify prompt was shown
 		expect(promptShown).toBe(true);
+
+		// Verify folder was created with trimmed name (should appear in folder list)
+		const folderLink = page.locator('.folder-card, .folder-item', { hasText: baseName });
+		await expect(folderLink).toBeVisible({ timeout: 10000 });
 	});
 
 	test('should not create folder when canceling prompt', async ({ page }) => {

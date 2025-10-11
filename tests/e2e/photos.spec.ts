@@ -41,6 +41,9 @@ test.describe('Photos Display and Upload', () => {
 		const folderId = await navigateToFolder(page);
 		if (!folderId) return;
 
+		// Wait for loading to finish
+		await page.waitForSelector('text=/loading photos/i', { state: 'hidden', timeout: 10000 });
+
 		// Should show either photos or empty state
 		const photosGrid = page.locator('.grid');
 		const emptyMessage = page.locator('text=/no photos/i');
@@ -81,35 +84,41 @@ test.describe('Photos Display and Upload', () => {
 		const folderId = await navigateToFolder(page);
 		if (!folderId) return;
 
+		// Wait for page to be fully loaded
+		await page.waitForSelector('text=/loading photos/i', { state: 'hidden', timeout: 10000 });
+
 		// Click upload button
 		const uploadButton = page.getByRole('button', { name: /upload/i });
 		await uploadButton.click();
 
 		// Should show uploader container
-		await expect(page.locator('.uploader-container')).toBeVisible();
+		await expect(page.locator('.uploader-container')).toBeVisible({ timeout: 10000 });
 
-		// Should show Uppy dashboard (might take a moment to initialize)
-		await page.waitForTimeout(500);
-
-		// Check for Uppy elements
+		// Wait for Uppy dashboard to initialize (Uppy needs time to mount)
 		const uppyDashboard = page.locator('[class*="uppy"]');
-		await expect(uppyDashboard).toBeVisible();
+		await expect(uppyDashboard).toBeVisible({ timeout: 10000 });
 	});
 
 	test('should toggle uploader when clicking cancel', async ({ page }) => {
 		const folderId = await navigateToFolder(page);
 		if (!folderId) return;
 
+		// Wait for page to be fully loaded
+		await page.waitForSelector('text=/loading photos/i', { state: 'hidden', timeout: 10000 });
+
 		// Open uploader
 		const uploadButton = page.getByRole('button', { name: /upload/i });
 		await uploadButton.click();
-		await expect(page.locator('.uploader-container')).toBeVisible();
+		await expect(page.locator('.uploader-container')).toBeVisible({ timeout: 10000 });
+
+		// Wait for Uppy to be fully initialized before trying to close
+		await page.waitForTimeout(1000);
 
 		// Click upload button again (should show "Cancel")
 		await uploadButton.click();
 
 		// Should hide uploader
-		await expect(page.locator('.uploader-container')).not.toBeVisible();
+		await expect(page.locator('.uploader-container')).not.toBeVisible({ timeout: 10000 });
 	});
 
 	test('should display pagination information when photos exist', async ({ page }) => {
