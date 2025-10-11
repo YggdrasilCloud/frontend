@@ -1,15 +1,34 @@
 <script lang="ts">
 	import { foldersQuery } from '$lib/api/queries/folders';
 	import { createFolderMutation } from '$lib/api/mutations/createFolder';
+	import { DateFormatter } from '$lib/domain/shared/DateFormatter';
+	import { ApiErrorFormatter } from '$lib/domain/error/ApiErrorFormatter';
+	import { FolderNameValidator } from '$lib/domain/folder/FolderNameValidator';
 
 	const folders = foldersQuery();
 	const createFolder = createFolderMutation();
 
+	// Reactive computations using domain services
+	$: errorMessage = $folders.isError ? ApiErrorFormatter.formatError($folders.error) : '';
+
 	function handleNewFolder() {
 		const name = prompt('Enter folder name:');
-		if (name && name.trim()) {
-			$createFolder.mutate({ name: name.trim() });
+		if (!name) return;
+
+		// Validate folder name using domain service
+		const validation = FolderNameValidator.validate(name);
+		if (!validation.isValid) {
+			alert(validation.error);
+			return;
 		}
+
+		// Use sanitized name
+		const sanitizedName = FolderNameValidator.sanitize(name);
+		$createFolder.mutate({ name: sanitizedName });
+	}
+
+	function formatCreationDate(isoDate: string): string {
+		return DateFormatter.toLocaleDateString(isoDate);
 	}
 </script>
 
@@ -34,10 +53,7 @@
 				<details class="error-details">
 					<summary>Technical details</summary>
 					<p class="error-message">
-						{$folders.error.message.includes('NetworkError') ||
-						$folders.error.message.includes('Failed to fetch')
-							? 'Unable to connect to the API. Make sure the backend is running.'
-							: `API Error: ${$folders.error.message}`}
+						{errorMessage}
 					</p>
 				</details>
 			</div>
@@ -57,7 +73,7 @@
 							<div class="folder-icon">📁</div>
 							<div class="folder-info">
 								<h3>{folder.name}</h3>
-								<p class="folder-date">Created {new Date(folder.createdAt).toLocaleDateString()}</p>
+								<p class="folder-date">Created {formatCreationDate(folder.createdAt)}</p>
 							</div>
 						</a>
 					{/each}
