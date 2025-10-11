@@ -29,7 +29,7 @@ jobs:
         run: npm run format:check
 
   test-unit:
-    name: Unit Tests
+    name: Unit Tests & Coverage
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,18 +43,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run unit tests
-        run: npm run test:run
-
-      - name: Generate coverage report
+      - name: Run unit tests with coverage
         run: npm run test:coverage
 
-      - name: Upload coverage to Codecov
+      - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
         with:
-          files: ./coverage/coverage-final.json
+          files: ./coverage/lcov.info
           flags: unittests
           name: codecov-umbrella
+          fail_ci_if_error: false
+          verbose: true
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30
+
+      - name: Comment coverage on PR
+        uses: romeovs/lcov-reporter-action@v0.3.1
+        if: github.event_name == 'pull_request'
+        with:
+          lcov-file: ./coverage/lcov.info
+          github-token: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
   test-e2e:

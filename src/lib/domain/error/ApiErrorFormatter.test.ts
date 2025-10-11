@@ -52,6 +52,13 @@ describe('ApiErrorFormatter', () => {
 			expect(result).toBe('Server error. Please try again later.');
 		});
 
+		it('should format 409 conflict errors', () => {
+			const error = new Error('API Error: 409 Conflict');
+			const result = ApiErrorFormatter.formatError(error);
+
+			expect(result).toBe('Conflict detected. The resource may already exist.');
+		});
+
 		it('should format timeout errors as generic errors', () => {
 			const error = new Error('Request timeout');
 			const result = ApiErrorFormatter.formatError(error);

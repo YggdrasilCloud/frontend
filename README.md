@@ -1,5 +1,9 @@
 # YggdrasilCloud Frontend
 
+[![CI/CD Pipeline](https://github.com/YggdrasilCloud/frontend/actions/workflows/ci.yml/badge.svg)](https://github.com/YggdrasilCloud/frontend/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/YggdrasilCloud/frontend/branch/main/graph/badge.svg)](https://codecov.io/gh/YggdrasilCloud/frontend)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Modern photo management web application built with SvelteKit.
 
 ## Features
@@ -120,15 +124,54 @@ npm run check
 npm run lint
 ```
 
+## Testing
+
+This project has comprehensive test coverage:
+
+### Unit Tests
+
+```bash
+# Run unit tests
+docker compose exec frontend npm run test:run
+
+# Run tests with coverage
+docker compose exec frontend npm run test:coverage
+
+# Run tests in watch mode
+docker compose exec frontend npm test
+```
+
+**Current Coverage: 97.39%** 🎉
+
+### E2E Tests
+
+```bash
+# Run E2E tests
+docker compose exec frontend npm run test:e2e
+
+# Run E2E tests in UI mode
+docker compose exec frontend npm run test:e2e:ui
+```
+
+### Mutation Testing
+
+```bash
+# Run mutation tests (slow, recommended on CI only)
+docker compose exec frontend npm run test:mutation
+```
+
 ## Project Structure
 
 ```
 src/
 ├── lib/
 │   ├── api/              # API client and queries
-│   └── components/       # Reusable components
+│   ├── components/       # Reusable components
+│   └── domain/           # Domain services (business logic)
 ├── routes/               # SvelteKit routes (pages)
 └── app.html             # HTML template
+tests/
+└── e2e/                  # Playwright E2E tests
 ```
 
 ## API Integration
