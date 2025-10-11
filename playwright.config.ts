@@ -12,7 +12,8 @@ export default defineConfig({
 	workers: process.env.CI ? 1 : undefined,
 	reporter: [['html', { outputFolder: 'reports/playwright' }], ['list']],
 	use: {
-		baseURL: 'http://localhost:5173',
+		// Use host.docker.internal when running in Docker, localhost otherwise
+		baseURL: process.env.DOCKER_ENV ? 'http://host.docker.internal:5173' : 'http://localhost:5173',
 		trace: 'on-first-retry',
 		screenshot: 'only-on-failure'
 	},
@@ -47,8 +48,8 @@ export default defineConfig({
 	/* Run your local dev server before starting the tests */
 	webServer: {
 		command: 'npm run dev',
-		url: 'http://localhost:5173',
-		reuseExistingServer: !process.env.CI,
+		url: process.env.DOCKER_ENV ? 'http://host.docker.internal:5173' : 'http://localhost:5173',
+		reuseExistingServer: true, // Always reuse since dev server runs in Docker
 		timeout: 120000
 	}
 });
