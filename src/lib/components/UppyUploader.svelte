@@ -11,6 +11,8 @@
 	export let allowedTypes: string[] = ['image/*'];
 	export let maxFileSize: number = 20971520; // 20MB
 	export let maxNumberOfFiles: number = 100;
+	export let fieldName: string = 'file'; // Field name for the file in the POST request
+	export let formData: Record<string, string> = {}; // Additional form data to send with the upload
 
 	const dispatch = createEventDispatcher<{
 		complete: { successful: any[]; failed: any[] };
@@ -39,10 +41,16 @@
 			})
 			.use(XHRUpload, {
 				endpoint,
-				fieldName: 'file',
+				fieldName,
 				formData: true,
-				bundle: false // One request per file
+				bundle: false, // One request per file
+				allowedMetaFields: Object.keys(formData)
 			});
+
+		// Set meta data for additional form fields
+		Object.entries(formData).forEach(([key, value]) => {
+			uppy.setMeta({ [key]: value });
+		});
 
 		// Forward Uppy events to Svelte
 		uppy.on('complete', (result) => {
@@ -62,7 +70,10 @@
 	});
 
 	onDestroy(() => {
-		uppy?.close();
+		if (uppy) {
+			uppy.cancelAll();
+			uppy.clear();
+		}
 	});
 </script>
 
