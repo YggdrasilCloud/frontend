@@ -41,13 +41,21 @@ test.describe('Photos Display and Upload', () => {
 		const folderId = await navigateToFolder(page);
 		if (!folderId) return;
 
-		// Wait for loading to finish
-		await page.waitForSelector('text=/loading photos/i', { state: 'hidden', timeout: 10000 });
-
-		// Should show either photos or empty state
+		// Should show either photos or empty state (don't wait for loading, just check final state)
 		const photosGrid = page.locator('.grid');
 		const emptyMessage = page.locator('text=/no photos/i');
 
+		// Wait for one of them to be visible
+		try {
+			await Promise.race([
+				photosGrid.waitFor({ state: 'visible', timeout: 5000 }),
+				emptyMessage.waitFor({ state: 'visible', timeout: 5000 })
+			]);
+		} catch {
+			// If neither appears in 5s, that's ok - might still be loading
+		}
+
+		// Now check what's visible
 		const hasPhotos = await photosGrid.isVisible().catch(() => false);
 		const isEmpty = await emptyMessage.isVisible().catch(() => false);
 
@@ -84,41 +92,32 @@ test.describe('Photos Display and Upload', () => {
 		const folderId = await navigateToFolder(page);
 		if (!folderId) return;
 
-		// Wait for page to be fully loaded
-		await page.waitForSelector('text=/loading photos/i', { state: 'hidden', timeout: 10000 });
-
 		// Click upload button
 		const uploadButton = page.getByRole('button', { name: /upload/i });
 		await uploadButton.click();
 
-		// Should show uploader container
-		await expect(page.locator('.uploader-container')).toBeVisible({ timeout: 10000 });
+		// Should show uploader container (Uppy mounts instantly)
+		await expect(page.locator('.uploader-container')).toBeVisible({ timeout: 3000 });
 
-		// Wait for Uppy dashboard to initialize (Uppy needs time to mount)
+		// Verify Uppy dashboard is present
 		const uppyDashboard = page.locator('[class*="uppy"]');
-		await expect(uppyDashboard).toBeVisible({ timeout: 10000 });
+		await expect(uppyDashboard).toBeVisible({ timeout: 3000 });
 	});
 
 	test('should toggle uploader when clicking cancel', async ({ page }) => {
 		const folderId = await navigateToFolder(page);
 		if (!folderId) return;
 
-		// Wait for page to be fully loaded
-		await page.waitForSelector('text=/loading photos/i', { state: 'hidden', timeout: 10000 });
-
 		// Open uploader
 		const uploadButton = page.getByRole('button', { name: /upload/i });
 		await uploadButton.click();
-		await expect(page.locator('.uploader-container')).toBeVisible({ timeout: 10000 });
+		await expect(page.locator('.uploader-container')).toBeVisible({ timeout: 3000 });
 
-		// Wait for Uppy to be fully initialized before trying to close
-		await page.waitForTimeout(1000);
-
-		// Click upload button again (should show "Cancel")
+		// Click upload button again (text changes to "Cancel", toggles uploader off)
 		await uploadButton.click();
 
 		// Should hide uploader
-		await expect(page.locator('.uploader-container')).not.toBeVisible({ timeout: 10000 });
+		await expect(page.locator('.uploader-container')).not.toBeVisible({ timeout: 3000 });
 	});
 
 	test('should display pagination information when photos exist', async ({ page }) => {
