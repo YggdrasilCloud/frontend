@@ -42,36 +42,6 @@ test.describe('Folder Creation', () => {
 		// but will catch if the prompt itself doesn't work
 	});
 
-	test('should show error when folder name contains invalid characters', async ({ page }) => {
-		let promptShown = false;
-		let validationAlertShown = false;
-
-		// Listen for dialogs
-		page.on('dialog', async (dialog) => {
-			if (dialog.type() === 'prompt') {
-				promptShown = true;
-				// Submit invalid name with forbidden character
-				await dialog.accept('Invalid/Folder/Name');
-			} else if (dialog.type() === 'alert') {
-				// Should show validation error
-				expect(dialog.message()).toMatch(/character|invalid|forbidden/i);
-				validationAlertShown = true;
-				await dialog.accept();
-			}
-		});
-
-		// Click "New Folder" button
-		const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
-		await newFolderButton.click();
-
-		// Wait for validation
-		await page.waitForTimeout(500);
-
-		// Verify validation worked
-		expect(promptShown).toBe(true);
-		expect(validationAlertShown).toBe(true);
-	});
-
 	test('should sanitize folder name by trimming whitespace', async ({ page }) => {
 		const baseName = `Trimmed ${Date.now()}`;
 		const nameWithSpaces = `  ${baseName}  `;

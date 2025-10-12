@@ -83,40 +83,4 @@ test.describe('Folders Management', () => {
 		// Verify prompt was shown
 		expect(promptShown).toBe(true);
 	});
-
-	test('should handle folder creation with invalid names', async ({ page }) => {
-		let dialogShown = false;
-		let validationAlertShown = false;
-
-		// Listen for prompt dialog
-		page.on('dialog', async (dialog) => {
-			if (dialog.type() === 'prompt') {
-				dialogShown = true;
-				// Submit invalid name with forbidden character
-				await dialog.accept('Invalid/Name');
-			} else if (dialog.type() === 'alert') {
-				// Should show validation error
-				validationAlertShown = true;
-				expect(dialog.message()).toContain('character');
-				await dialog.accept();
-			}
-		});
-
-		await page.goto('/photos');
-		await page.waitForLoadState('networkidle');
-		await page
-			.waitForSelector('text=/loading/i', { state: 'hidden', timeout: 10000 })
-			.catch(() => {});
-
-		// Click "New Folder" button
-		const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
-		await newFolderButton.click();
-
-		// Give time for validation
-		await page.waitForTimeout(1000);
-
-		// Expect both dialogs to have been shown
-		expect(dialogShown).toBe(true);
-		expect(validationAlertShown).toBe(true);
-	});
 });

@@ -28,6 +28,28 @@ describe('FolderNameValidator', () => {
 			expect(result.isValid).toBe(true);
 		});
 
+		it('should accept folder name with special characters (backend validates)', () => {
+			// These characters are now accepted by client - backend will validate
+			const result1 = FolderNameValidator.validate('Photos/2024');
+			const result2 = FolderNameValidator.validate('Photos:2024');
+			const result3 = FolderNameValidator.validate('Photos*');
+
+			expect(result1.isValid).toBe(true);
+			expect(result2.isValid).toBe(true);
+			expect(result3.isValid).toBe(true);
+		});
+
+		it('should accept reserved names (backend validates)', () => {
+			// Reserved names are now accepted by client - backend will validate
+			const result1 = FolderNameValidator.validate('.');
+			const result2 = FolderNameValidator.validate('..');
+			const result3 = FolderNameValidator.validate('CON');
+
+			expect(result1.isValid).toBe(true);
+			expect(result2.isValid).toBe(true);
+			expect(result3.isValid).toBe(true);
+		});
+
 		it('should reject empty string', () => {
 			const result = FolderNameValidator.validate('');
 
@@ -40,97 +62,6 @@ describe('FolderNameValidator', () => {
 
 			expect(result.isValid).toBe(false);
 			expect(result.error).toBe('Folder name cannot be empty');
-		});
-
-		it('should reject folder name with forward slash', () => {
-			const result = FolderNameValidator.validate('Photos/2024');
-
-			expect(result.isValid).toBe(false);
-			expect(result.error).toBe('Folder name cannot contain the character: /');
-		});
-
-		it('should reject folder name with backslash', () => {
-			const result = FolderNameValidator.validate('Photos\\2024');
-
-			expect(result.isValid).toBe(false);
-			expect(result.error).toBe('Folder name cannot contain the character: \\');
-		});
-
-		it('should reject folder name with colon', () => {
-			const result = FolderNameValidator.validate('Photos:2024');
-
-			expect(result.isValid).toBe(false);
-			expect(result.error).toBe('Folder name cannot contain the character: :');
-		});
-
-		it('should reject folder name with asterisk', () => {
-			const result = FolderNameValidator.validate('Photos*');
-
-			expect(result.isValid).toBe(false);
-			expect(result.error).toBe('Folder name cannot contain the character: *');
-		});
-
-		it('should reject folder name with question mark', () => {
-			const result = FolderNameValidator.validate('Photos?');
-
-			expect(result.isValid).toBe(false);
-			expect(result.error).toBe('Folder name cannot contain the character: ?');
-		});
-
-		it('should reject folder name with double quote', () => {
-			const result = FolderNameValidator.validate('Photos"2024');
-
-			expect(result.isValid).toBe(false);
-			expect(result.error).toBe('Folder name cannot contain the character: "');
-		});
-
-		it('should reject folder name with less than', () => {
-			const result = FolderNameValidator.validate('Photos<2024');
-
-			expect(result.isValid).toBe(false);
-			expect(result.error).toBe('Folder name cannot contain the character: <');
-		});
-
-		it('should reject folder name with greater than', () => {
-			const result = FolderNameValidator.validate('Photos>2024');
-
-			expect(result.isValid).toBe(false);
-			expect(result.error).toBe('Folder name cannot contain the character: >');
-		});
-
-		it('should reject folder name with pipe', () => {
-			const result = FolderNameValidator.validate('Photos|2024');
-
-			expect(result.isValid).toBe(false);
-			expect(result.error).toBe('Folder name cannot contain the character: |');
-		});
-
-		it('should reject reserved name "."', () => {
-			const result = FolderNameValidator.validate('.');
-
-			expect(result.isValid).toBe(false);
-			expect(result.error).toContain('reserved name');
-		});
-
-		it('should reject reserved name ".."', () => {
-			const result = FolderNameValidator.validate('..');
-
-			expect(result.isValid).toBe(false);
-			expect(result.error).toContain('reserved name');
-		});
-
-		it('should reject reserved name "CON"', () => {
-			const result = FolderNameValidator.validate('CON');
-
-			expect(result.isValid).toBe(false);
-			expect(result.error).toContain('reserved name');
-		});
-
-		it('should reject reserved name "PRN"', () => {
-			const result = FolderNameValidator.validate('PRN');
-
-			expect(result.isValid).toBe(false);
-			expect(result.error).toContain('reserved name');
 		});
 
 		it('should reject name exceeding max length (255)', () => {
@@ -165,22 +96,15 @@ describe('FolderNameValidator', () => {
 			expect(result).toBe('My Photos');
 		});
 
-		it('should replace forward slashes with hyphens', () => {
-			const result = FolderNameValidator.sanitize('Photos/2024');
+		it('should not replace special characters (backend handles)', () => {
+			// Special characters are preserved - backend will handle them
+			const result1 = FolderNameValidator.sanitize('Photos/2024');
+			const result2 = FolderNameValidator.sanitize('Photos\\2024');
+			const result3 = FolderNameValidator.sanitize('Photos:2024*?');
 
-			expect(result).toBe('Photos-2024');
-		});
-
-		it('should replace backslashes with hyphens', () => {
-			const result = FolderNameValidator.sanitize('Photos\\2024');
-
-			expect(result).toBe('Photos-2024');
-		});
-
-		it('should replace multiple forbidden characters', () => {
-			const result = FolderNameValidator.sanitize('Photos:2024*?');
-
-			expect(result).toBe('Photos-2024--');
+			expect(result1).toBe('Photos/2024');
+			expect(result2).toBe('Photos\\2024');
+			expect(result3).toBe('Photos:2024*?');
 		});
 
 		it('should truncate to max length', () => {
@@ -208,11 +132,12 @@ describe('FolderNameValidator', () => {
 			expect(result).toBe('');
 		});
 
-		it('should replace all forbidden characters in complex name', () => {
-			const result = FolderNameValidator.sanitize('My/Photos\\2024:Best*Moments?<Now>|');
+		it('should trim and truncate in complex case', () => {
+			const longNameWithSpaces = '  ' + 'a'.repeat(300) + '  ';
+			const result = FolderNameValidator.sanitize(longNameWithSpaces);
 
-			// Each forbidden character is replaced individually, so > and | become --
-			expect(result).toBe('My-Photos-2024-Best-Moments--Now--');
+			expect(result.length).toBe(255);
+			expect(result).toBe('a'.repeat(255));
 		});
 	});
 });
