@@ -171,6 +171,9 @@ test.describe('Photos Display and Upload', () => {
 		const folderId = await navigateToFolder(page);
 		if (!folderId) return;
 
+		// Wait for sidebar folders to load (TanStack Query async)
+		await page.waitForSelector('.folders-list .folder-item', { timeout: 10000 });
+
 		// Check sidebar has folders list
 		const sidebarFolders = page.locator('.folders-list .folder-item');
 		const folderCount = await sidebarFolders.count();
