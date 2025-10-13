@@ -6,22 +6,22 @@ test.describe('Lightbox Feature', () => {
 		await page.goto('/photos');
 		await page.waitForLoadState('networkidle');
 
-		const folderCard = page.locator('.folder-card').first();
-		const folderExists = await folderCard.isVisible().catch(() => false);
-
-		if (!folderExists) {
+		// Wait for folders to load (TanStack Query async)
+		try {
+			await page.waitForSelector('.folder-card', { timeout: 10000 });
+		} catch {
 			test.skip(true, 'No folders available for testing');
 			return false;
 		}
 
+		const folderCard = page.locator('.folder-card').first();
 		await folderCard.click();
 		await page.waitForLoadState('networkidle');
 
-		// Check if photos exist
-		const photoCard = page.locator('.photo-card').first();
-		const hasPhotos = await photoCard.isVisible().catch(() => false);
-
-		if (!hasPhotos) {
+		// Wait for photos to load (TanStack Query async)
+		try {
+			await page.waitForSelector('.photo-card', { timeout: 10000 });
+		} catch {
 			test.skip(true, 'No photos available for testing');
 			return false;
 		}

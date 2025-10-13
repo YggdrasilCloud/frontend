@@ -6,14 +6,15 @@ test.describe('Photos Display and Upload', () => {
 		await page.goto('/photos');
 		await page.waitForLoadState('networkidle');
 
-		const folderCard = page.locator('.folder-card').first();
-		const folderExists = await folderCard.isVisible().catch(() => false);
-
-		if (!folderExists) {
+		// Wait for folders to load (TanStack Query async)
+		try {
+			await page.waitForSelector('.folder-card', { timeout: 10000 });
+		} catch {
 			test.skip(true, 'No folders available for testing');
 			return null;
 		}
 
+		const folderCard = page.locator('.folder-card').first();
 		const folderId = await folderCard.getAttribute('href');
 		await folderCard.click();
 		await page.waitForLoadState('networkidle');
@@ -66,26 +67,27 @@ test.describe('Photos Display and Upload', () => {
 		const folderId = await navigateToFolder(page);
 		if (!folderId) return;
 
-		// Check if photos exist
-		const photoCard = page.locator('.photo-card').first();
-		const hasPhoto = await photoCard.isVisible().catch(() => false);
-
-		if (hasPhoto) {
-			// Check photo card structure
-			await expect(photoCard.locator('img')).toBeVisible();
-			await expect(photoCard.locator('.photo-name')).toBeVisible();
-			await expect(photoCard.locator('.photo-size')).toBeVisible();
-
-			// Check image attributes
-			const img = photoCard.locator('img');
-			await expect(img).toHaveAttribute('loading', 'lazy');
-			await expect(img).toHaveAttribute('width', '200');
-			await expect(img).toHaveAttribute('height', '200');
-			await expect(img).toHaveAttribute('alt');
-		} else {
-			// No photos - skip detailed checks
+		// Wait for photos to load (TanStack Query async)
+		try {
+			await page.waitForSelector('.photo-card', { timeout: 10000 });
+		} catch {
 			test.skip();
+			return;
 		}
+
+		const photoCard = page.locator('.photo-card').first();
+
+		// Check photo card structure
+		await expect(photoCard.locator('img')).toBeVisible();
+		await expect(photoCard.locator('.photo-name')).toBeVisible();
+		await expect(photoCard.locator('.photo-size')).toBeVisible();
+
+		// Check image attributes
+		const img = photoCard.locator('img');
+		await expect(img).toHaveAttribute('loading', 'lazy');
+		await expect(img).toHaveAttribute('width', '200');
+		await expect(img).toHaveAttribute('height', '200');
+		await expect(img).toHaveAttribute('alt');
 	});
 
 	test('should show uploader when clicking upload button', async ({ page }) => {
@@ -139,14 +141,17 @@ test.describe('Photos Display and Upload', () => {
 	test('should show loading state initially', async ({ page }) => {
 		// Navigate but don't wait for network idle to catch loading state
 		await page.goto('/photos');
-		const folderCard = page.locator('.folder-card').first();
-		const folderExists = await folderCard.isVisible().catch(() => false);
+		await page.waitForLoadState('networkidle');
 
-		if (!folderExists) {
+		// Wait for folders to load
+		try {
+			await page.waitForSelector('.folder-card', { timeout: 10000 });
+		} catch {
 			test.skip();
 			return;
 		}
 
+		const folderCard = page.locator('.folder-card').first();
 		const href = await folderCard.getAttribute('href');
 		if (!href) return;
 
