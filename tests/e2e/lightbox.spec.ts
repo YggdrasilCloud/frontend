@@ -54,11 +54,14 @@ test.describe('Lightbox Feature', () => {
 			// Open lightbox
 			await firstPhoto.click();
 
+			// Scope selectors to the lightbox dialog to avoid matching grid elements
+			const lightbox = page.locator('[role="dialog"]');
+
 			// Should display photo name
-			await expect(page.locator('.photo-name')).toContainText(photoName || '');
+			await expect(lightbox.locator('.photo-name')).toContainText(photoName || '');
 
 			// Should display counter
-			await expect(page.locator('.photo-counter')).toBeVisible();
+			await expect(lightbox.locator('.photo-counter')).toBeVisible();
 		});
 
 		test('should close lightbox when clicking close button', async ({ page }) => {
