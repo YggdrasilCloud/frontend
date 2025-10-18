@@ -159,13 +159,17 @@ describe('UploadConfiguration', () => {
 				expect(result.error).toContain('21.00 MB');
 			});
 
-			it('should reject very large file', () => {
-				const file = createFile('image/jpeg', 100 * 1024 * 1024); // 100 MB
-				const result = UploadConfiguration.validateFile(file);
+			it(
+				'should reject very large file',
+				() => {
+					const file = createFile('image/jpeg', 100 * 1024 * 1024); // 100 MB
+					const result = UploadConfiguration.validateFile(file);
 
-				expect(result.isValid).toBe(false);
-				expect(result.error).toContain('100.00 MB');
-			});
+					expect(result.isValid).toBe(false);
+					expect(result.error).toContain('100.00 MB');
+				},
+				10000
+			); // 10s timeout for large file creation
 
 			it('should reject empty file', () => {
 				const file = createFile('image/jpeg', 0);
