@@ -31,5 +31,6 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "Update frontend-submodule to ${{ github.sha }}\n\nAutomated update triggered by push to YggdrasilCloud/frontend\nCommit: ${{ github.event.head_commit.message }}"
+            git pull --rebase origin main
             git push origin main
           fi
