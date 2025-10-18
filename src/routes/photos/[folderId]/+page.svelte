@@ -13,7 +13,7 @@
 	import { FolderNameValidator } from '$lib/domain/folder/FolderNameValidator';
 	import { UploadConfiguration } from '$lib/domain/shared/UploadConfiguration';
 
-	$: folderId = $page.params.folderId;
+	$: folderId = $page.params.folderId ?? '';
 	$: folders = foldersQuery();
 	$: photos = photosQuery(folderId, 1, 50);
 

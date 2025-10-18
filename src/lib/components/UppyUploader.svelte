@@ -8,16 +8,16 @@
 	import '@uppy/dashboard/dist/style.min.css';
 
 	export let endpoint: string;
-	export let allowedTypes: string[] = ['image/*'];
+	export let allowedTypes: readonly string[] | string[] = ['image/*'];
 	export let maxFileSize: number = 20971520; // 20MB
 	export let maxNumberOfFiles: number = 100;
 	export let fieldName: string = 'file'; // Field name for the file in the POST request
 	export let formData: Record<string, string> = {}; // Additional form data to send with the upload
 
-	import type { UppyFile } from '@uppy/core';
+	import type { UppyFile, Meta, Body } from '@uppy/core';
 
 	const dispatch = createEventDispatcher<{
-		complete: { successful: UppyFile[]; failed: UppyFile[] };
+		complete: { successful: UppyFile<Meta, Body>[]; failed: UppyFile<Meta, Body>[] };
 		progress: { progress: number };
 		error: { error: Error };
 	}>();
@@ -30,7 +30,7 @@
 			restrictions: {
 				maxFileSize,
 				maxNumberOfFiles,
-				allowedFileTypes: allowedTypes
+				allowedFileTypes: [...allowedTypes]
 			},
 			autoProceed: false
 		})
@@ -51,14 +51,14 @@
 
 		// Set meta data for additional form fields
 		Object.entries(formData).forEach(([key, value]) => {
-			uppy.setMeta({ [key]: value });
+			uppy?.setMeta({ [key]: value });
 		});
 
 		// Forward Uppy events to Svelte
 		uppy.on('complete', (result) => {
 			dispatch('complete', {
-				successful: result.successful,
-				failed: result.failed
+				successful: result.successful ?? [],
+				failed: result.failed ?? []
 			});
 		});
 

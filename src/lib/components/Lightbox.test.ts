@@ -171,7 +171,7 @@ describe('Lightbox Logic', () => {
 		});
 
 		it('should ignore other keys', () => {
-			const key = 'Enter';
+			const key: string = 'Enter';
 			const shouldClose = key === 'Escape';
 			const shouldGoBack = key === 'ArrowLeft';
 			const shouldGoForward = key === 'ArrowRight';
