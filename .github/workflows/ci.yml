@@ -79,7 +79,7 @@ jobs:
     # 1. Add the API backend as a service or container
     # 2. Configure PUBLIC_API_URL environment variable
     # 3. Ensure both services can communicate
-    if: false  # Disabled until API backend is available in CI
+    if: false # Disabled until API backend is available in CI
     steps:
       - uses: actions/checkout@v4
 
