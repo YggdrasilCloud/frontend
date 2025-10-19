@@ -7,6 +7,7 @@
 	import UppyUploader from '$lib/components/UppyUploader.svelte';
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
+	import FolderTree from '$lib/components/FolderTree.svelte';
 	import { env } from '$env/dynamic/public';
 	import type { PhotoDto } from '$lib/api/types';
 	import { PhotoUrlBuilder } from '$lib/domain/photo/PhotoUrlBuilder';
@@ -145,11 +146,7 @@
 				{#if $folders.data.length === 0}
 					<p class="status-message">No folders yet</p>
 				{:else}
-					{#each $folders.data as folder}
-						<a href="/photos/{folder.id}" class="folder-item" class:active={folder.id === folderId}>
-							📁 {folder.name}
-						</a>
-					{/each}
+					<FolderTree folders={$folders.data} currentFolderId={folderId} />
 				{/if}
 			{/if}
 		</nav>
@@ -363,25 +360,6 @@
 		flex: 1;
 		overflow-y: auto;
 		padding: var(--spacing-lg);
-	}
-
-	.folder-item {
-		display: block;
-		padding: var(--spacing-md);
-		margin-bottom: var(--spacing-xs);
-		border-radius: var(--radius-sm);
-		color: var(--color-text);
-		text-decoration: none;
-		transition: background-color 0.2s;
-	}
-
-	.folder-item:hover {
-		background-color: var(--color-bg);
-	}
-
-	.folder-item.active {
-		background-color: var(--color-primary);
-		color: white;
 	}
 
 	.status-message {
