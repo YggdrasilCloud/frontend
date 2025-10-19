@@ -151,31 +151,33 @@
 				</div>
 			{/if}
 
-			<!-- Subfolders Section -->
-			{#if $subfolders.isLoading}
-				<p class="status-message">Loading folders...</p>
-			{:else if $subfolders.isError}
-				<div class="error-box">
-					<p class="status-message">Unable to load subfolders.</p>
-					<details>
-						<summary>Technical details</summary>
-						<p class="error-message">{$subfolders.error.message}</p>
-					</details>
-				</div>
-			{:else if $subfolders.data && $subfolders.data.children.length > 0}
-				<div class="folders-section">
-					<h3>Folders</h3>
-					<div class="grid">
-						{#each $subfolders.data.children as subfolder}
-							<a href="/photos/{subfolder.id}" class="folder-card">
-								<div class="folder-icon">📁</div>
-								<div class="folder-info">
-									<span class="folder-name">{subfolder.name}</span>
-								</div>
-							</a>
-						{/each}
+			<!-- Subfolders Section - Only show when inside a folder -->
+			{#if folderId}
+				{#if $subfolders.isLoading}
+					<p class="status-message">Loading folders...</p>
+				{:else if $subfolders.isError}
+					<div class="error-box">
+						<p class="status-message">Unable to load subfolders.</p>
+						<details>
+							<summary>Technical details</summary>
+							<p class="error-message">{$subfolders.error.message}</p>
+						</details>
 					</div>
-				</div>
+				{:else if $subfolders.data && $subfolders.data.children.length > 0}
+					<div class="folders-section">
+						<h3>Folders</h3>
+						<div class="grid">
+							{#each $subfolders.data.children as subfolder}
+								<a href="/photos/{subfolder.id}" class="folder-card">
+									<div class="folder-icon">📁</div>
+									<div class="folder-info">
+										<span class="folder-name">{subfolder.name}</span>
+									</div>
+								</a>
+							{/each}
+						</div>
+					</div>
+				{/if}
 			{/if}
 
 			<!-- Photos Section -->
