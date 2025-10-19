@@ -131,6 +131,8 @@ jobs:
     needs: [trigger-e2e, resolve-core-version]
     runs-on: ubuntu-latest
     if: ${{ !inputs.dry_run }}
+    permissions:
+      contents: write
     steps:
       - name: Checkout frontend
         uses: actions/checkout@v4
