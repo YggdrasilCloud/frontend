@@ -34,6 +34,15 @@ export interface GetFolderChildrenResponse {
 	children: FolderDto[];
 }
 
+export interface PathSegmentDto {
+	id: string;
+	name: string;
+}
+
+export interface GetFolderPathResponse {
+	path: PathSegmentDto[];
+}
+
 export interface UploadPhotoResponse {
 	id: string;
 	fileName: string;
