@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { useQueryClient } from '@tanstack/svelte-query';
-	import { foldersQuery, folderChildrenQuery } from '$lib/api/queries/folders';
+	import { foldersQuery, folderChildrenQuery, folderPathQuery } from '$lib/api/queries/folders';
 	import { photosQuery } from '$lib/api/queries/photos';
 	import { createFolderMutation } from '$lib/api/mutations/createFolder';
 	import UppyUploader from '$lib/components/UppyUploader.svelte';
 	import Lightbox from '$lib/components/Lightbox.svelte';
+	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import { env } from '$env/dynamic/public';
 	import type { PhotoDto } from '$lib/api/types';
 	import { PhotoUrlBuilder } from '$lib/domain/photo/PhotoUrlBuilder';
@@ -16,6 +17,7 @@
 	$: folderId = $page.params.folderId ?? '';
 	$: folders = foldersQuery();
 	$: subfolders = folderChildrenQuery(folderId);
+	$: folderPath = folderPathQuery(folderId);
 	$: photos = photosQuery(folderId, 1, 50);
 
 	const createFolder = createFolderMutation();
@@ -130,6 +132,11 @@
 				{showUploader ? 'Cancel' : '📤 Upload Photos'}
 			</button>
 		</header>
+
+		{#if $folderPath.data}
+			<Breadcrumb path={$folderPath.data.path} />
+		{/if}
+
 		<div class="photos-grid">
 			{#if showUploader}
 				<div class="uploader-container">
