@@ -2,6 +2,7 @@ export interface FolderDto {
 	id: string;
 	name: string;
 	createdAt: string;
+	parentId?: string | null;
 }
 
 export interface PhotoDto {
