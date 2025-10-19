@@ -33,7 +33,7 @@
 	let showUploader = false;
 	let selectedPhoto: PhotoDto | null = null;
 
-	async function handleNewFolder() {
+	async function handleNewRootFolder() {
 		const name = prompt('Enter folder name:');
 		if (!name) return;
 
@@ -50,10 +50,36 @@
 		try {
 			await $createFolder.mutateAsync({
 				name: sanitizedName,
-				ownerId: UploadConfiguration.DEFAULT_OWNER_ID,
-				parentId: folderId || undefined
+				ownerId: UploadConfiguration.DEFAULT_OWNER_ID
+				// No parentId = root folder
 			});
-			// Subfolder list will refresh automatically via TanStack Query invalidation
+		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : 'Failed to create folder';
+			alert(`Error: ${errorMsg}`);
+			console.error('Failed to create folder:', error);
+		}
+	}
+
+	async function handleNewSubfolder() {
+		const name = prompt('Enter subfolder name:');
+		if (!name) return;
+
+		// Sanitize first (trim whitespace, clean forbidden chars)
+		const sanitizedName = FolderNameValidator.sanitize(name);
+
+		// Then validate the sanitized name
+		const validation = FolderNameValidator.validate(sanitizedName);
+		if (!validation.isValid) {
+			alert(validation.error);
+			return;
+		}
+
+		try {
+			await $createFolder.mutateAsync({
+				name: sanitizedName,
+				ownerId: UploadConfiguration.DEFAULT_OWNER_ID,
+				parentId: folderId
+			});
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : 'Failed to create folder';
 			alert(`Error: ${errorMsg}`);
@@ -100,7 +126,11 @@
 	<aside class="sidebar">
 		<div class="sidebar-header">
 			<h2>Folders</h2>
-			<button class="btn-new-folder" on:click={handleNewFolder} disabled={$createFolder.isPending}>
+			<button
+				class="btn-new-folder"
+				on:click={handleNewRootFolder}
+				disabled={$createFolder.isPending}
+			>
 				{$createFolder.isPending ? 'Creating...' : '+ New Folder'}
 			</button>
 		</div>
@@ -128,9 +158,20 @@
 	<main class="content">
 		<header class="content-header">
 			<h1>Photos</h1>
-			<button class="btn-upload" on:click={() => (showUploader = !showUploader)}>
-				{showUploader ? 'Cancel' : '📤 Upload Photos'}
-			</button>
+			<div class="header-actions">
+				{#if folderId}
+					<button
+						class="btn-new-subfolder"
+						on:click={handleNewSubfolder}
+						disabled={$createFolder.isPending}
+					>
+						{$createFolder.isPending ? 'Creating...' : '📁 New Subfolder'}
+					</button>
+				{/if}
+				<button class="btn-upload" on:click={() => (showUploader = !showUploader)}>
+					{showUploader ? 'Cancel' : '📤 Upload Photos'}
+				</button>
+			</div>
 		</header>
 
 		{#if $folderPath.data}
@@ -407,6 +448,34 @@
 		text-align: center;
 		color: var(--color-text-secondary);
 		font-size: 0.9rem;
+	}
+
+	.header-actions {
+		display: flex;
+		gap: var(--spacing-md);
+		align-items: center;
+	}
+
+	.btn-new-subfolder {
+		padding: var(--spacing-sm) var(--spacing-md);
+		background: var(--color-primary);
+		color: white;
+		border: none;
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		font-size: 0.9rem;
+		font-weight: 500;
+		transition: background-color 0.2s;
+		white-space: nowrap;
+	}
+
+	.btn-new-subfolder:hover:not(:disabled) {
+		background: var(--color-primary-hover);
+	}
+
+	.btn-new-subfolder:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
 	}
 
 	.btn-upload {
