@@ -1,7 +1,7 @@
 name: Bug Report
 description: Reporter un bug ou un comportement inattendu
-title: "[BUG] "
-labels: ["bug"]
+title: '[BUG] '
+labels: ['bug']
 body:
   - type: markdown
     attributes:

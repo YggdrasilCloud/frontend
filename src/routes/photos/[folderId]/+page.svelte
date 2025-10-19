@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { useQueryClient } from '@tanstack/svelte-query';
-	import { foldersQuery } from '$lib/api/queries/folders';
+	import { foldersQuery, folderChildrenQuery } from '$lib/api/queries/folders';
 	import { photosQuery } from '$lib/api/queries/photos';
 	import { createFolderMutation } from '$lib/api/mutations/createFolder';
 	import UppyUploader from '$lib/components/UppyUploader.svelte';
@@ -15,6 +15,7 @@
 
 	$: folderId = $page.params.folderId ?? '';
 	$: folders = foldersQuery();
+	$: subfolders = folderChildrenQuery(folderId);
 	$: photos = photosQuery(folderId, 1, 50);
 
 	const createFolder = createFolderMutation();
@@ -47,9 +48,10 @@
 		try {
 			await $createFolder.mutateAsync({
 				name: sanitizedName,
-				ownerId: UploadConfiguration.DEFAULT_OWNER_ID
+				ownerId: UploadConfiguration.DEFAULT_OWNER_ID,
+				parentId: folderId || undefined
 			});
-			// Folder list will refresh automatically via TanStack Query invalidation
+			// Subfolder list will refresh automatically via TanStack Query invalidation
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : 'Failed to create folder';
 			alert(`Error: ${errorMsg}`);
@@ -141,6 +143,35 @@
 					/>
 				</div>
 			{/if}
+
+			<!-- Subfolders Section -->
+			{#if $subfolders.isLoading}
+				<p class="status-message">Loading folders...</p>
+			{:else if $subfolders.isError}
+				<div class="error-box">
+					<p class="status-message">Unable to load subfolders.</p>
+					<details>
+						<summary>Technical details</summary>
+						<p class="error-message">{$subfolders.error.message}</p>
+					</details>
+				</div>
+			{:else if $subfolders.data && $subfolders.data.children.length > 0}
+				<div class="folders-section">
+					<h3>Folders</h3>
+					<div class="grid">
+						{#each $subfolders.data.children as subfolder}
+							<a href="/photos/{subfolder.id}" class="folder-card">
+								<div class="folder-icon">📁</div>
+								<div class="folder-info">
+									<span class="folder-name">{subfolder.name}</span>
+								</div>
+							</a>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			<!-- Photos Section -->
 			{#if $photos.isLoading}
 				<p class="status-message">Loading photos...</p>
 			{:else if $photos.isError}
@@ -152,37 +183,40 @@
 					</details>
 				</div>
 			{:else if $photos.data}
-				{#if $photos.data.data.length === 0}
-					<p class="status-message">No photos in this folder yet</p>
-				{:else}
-					<div class="grid">
-						{#each $photos.data.data as photo}
-							<div
-								class="photo-card"
-								on:click={() => openLightbox(photo)}
-								on:keydown={(e) => handlePhotoKeydown(e, photo)}
-								role="button"
-								tabindex="0"
-							>
-								<img
-									src={getImageUrl(photo)}
-									alt={photo.fileName}
-									loading="lazy"
-									width="200"
-									height="200"
-								/>
-								<div class="photo-info">
-									<span class="photo-name">{photo.fileName}</span>
-									<span class="photo-size">{formatFileSize(photo.sizeInBytes)}</span>
+				{#if $photos.data.data.length === 0 && (!$subfolders.data || $subfolders.data.children.length === 0)}
+					<p class="status-message">No photos or folders in this folder yet</p>
+				{:else if $photos.data.data.length > 0}
+					<div class="photos-section">
+						<h3>Photos</h3>
+						<div class="grid">
+							{#each $photos.data.data as photo}
+								<div
+									class="photo-card"
+									on:click={() => openLightbox(photo)}
+									on:keydown={(e) => handlePhotoKeydown(e, photo)}
+									role="button"
+									tabindex="0"
+								>
+									<img
+										src={getImageUrl(photo)}
+										alt={photo.fileName}
+										loading="lazy"
+										width="200"
+										height="200"
+									/>
+									<div class="photo-info">
+										<span class="photo-name">{photo.fileName}</span>
+										<span class="photo-size">{formatFileSize(photo.sizeInBytes)}</span>
+									</div>
 								</div>
-							</div>
-						{/each}
-					</div>
-					<div class="pagination">
-						<p>
-							Showing {$photos.data.data.length} of {$photos.data.pagination.total} photos (Page {$photos
-								.data.pagination.page})
-						</p>
+							{/each}
+						</div>
+						<div class="pagination">
+							<p>
+								Showing {$photos.data.data.length} of {$photos.data.pagination.total} photos (Page {$photos
+									.data.pagination.page})
+							</p>
+						</div>
 					</div>
 				{/if}
 			{/if}
@@ -423,5 +457,65 @@
 		font-size: 0.85rem;
 		line-height: 1.5;
 		word-break: break-word;
+	}
+
+	.folders-section,
+	.photos-section {
+		margin-bottom: var(--spacing-xl);
+	}
+
+	.folders-section h3,
+	.photos-section h3 {
+		margin: 0 0 var(--spacing-md) 0;
+		font-size: 1.1rem;
+		color: var(--color-text);
+		font-weight: 600;
+	}
+
+	.folder-card {
+		background: var(--color-bg-alt);
+		border: 2px solid var(--color-border);
+		border-radius: var(--radius-md);
+		overflow: hidden;
+		transition: all 0.2s;
+		cursor: pointer;
+		text-decoration: none;
+		color: var(--color-text);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		min-height: 200px;
+	}
+
+	.folder-card:hover {
+		box-shadow: var(--shadow-md);
+		transform: translateY(-2px);
+		border-color: var(--color-primary);
+	}
+
+	.folder-card:active {
+		transform: translateY(0);
+	}
+
+	.folder-icon {
+		font-size: 4rem;
+		margin-bottom: var(--spacing-md);
+	}
+
+	.folder-info {
+		padding: var(--spacing-sm);
+		text-align: center;
+		width: 100%;
+	}
+
+	.folder-name {
+		font-size: 0.95rem;
+		color: var(--color-text);
+		font-weight: 500;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		display: block;
 	}
 </style>

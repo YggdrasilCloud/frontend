@@ -27,6 +27,11 @@ export interface ListPhotosResponse {
 export interface CreateFolderRequest {
 	name: string;
 	ownerId: string;
+	parentId?: string;
+}
+
+export interface GetFolderChildrenResponse {
+	children: FolderDto[];
 }
 
 export interface UploadPhotoResponse {
