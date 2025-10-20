@@ -60,6 +60,14 @@
 		});
 	}
 
+	// Auto-expand parent folders when landing on a subfolder via direct link
+	$: if ($folderPath.data) {
+		// Expand all parent folders in the path
+		$folderPath.data.path.forEach((folder) => {
+			expandFolder(folder.id);
+		});
+	}
+
 	async function handleNewRootFolder() {
 		const name = prompt('Enter folder name:');
 		if (!name) return;
