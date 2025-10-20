@@ -77,8 +77,11 @@ test.describe('Folders Management', () => {
 		const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
 		await newFolderButton.click();
 
-		// Wait for potential API call
-		await page.waitForTimeout(2000);
+		// Wait for the folder to appear in the UI
+		if (folderName) {
+			const newFolder = page.locator('.folder-card', { hasText: folderName });
+			await newFolder.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+		}
 
 		// Verify prompt was shown
 		expect(promptShown).toBe(true);

@@ -31,8 +31,9 @@ test.describe('Folder Creation', () => {
 		const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
 		await newFolderButton.click();
 
-		// Wait for API call to complete
-		await page.waitForTimeout(2000);
+		// Wait for the folder to appear in the UI
+		const newFolder = page.locator('.folder-card', { hasText: folderName });
+		await newFolder.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
 
 		// Verify prompt was shown
 		expect(promptShown).toBe(true);
@@ -69,8 +70,9 @@ test.describe('Folder Creation', () => {
 		const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
 		await newFolderButton.click();
 
-		// Wait a bit for the dialog to potentially show
-		await page.waitForTimeout(500);
+		// Wait for the folder to appear in the UI
+		const newFolder = page.locator('.folder-card', { hasText: baseName });
+		await newFolder.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
 
 		// Verify: prompt shown, no error alert
 		expect(promptShown).toBe(true);
@@ -97,8 +99,8 @@ test.describe('Folder Creation', () => {
 		const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
 		await newFolderButton.click();
 
-		// Wait a bit
-		await page.waitForTimeout(500);
+		// Give time for dialog handler to complete
+		await page.waitForLoadState('networkidle');
 
 		// Verify prompt was shown but no alert (no API call)
 		expect(promptShown).toBe(true);
@@ -125,8 +127,8 @@ test.describe('Folder Creation', () => {
 		const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
 		await newFolderButton.click();
 
-		// Wait a bit
-		await page.waitForTimeout(500);
+		// Give time for dialog handler to complete
+		await page.waitForLoadState('networkidle');
 
 		// Verify prompt was shown but no alert (validation should prevent empty name)
 		expect(promptShown).toBe(true);
@@ -154,8 +156,9 @@ test.describe('Folder Creation', () => {
 		const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
 		await newFolderButton.click();
 
-		// Wait for potential API call
-		await page.waitForTimeout(2000);
+		// Wait for the folder to appear in the UI or API call to complete
+		const newFolder = page.locator('.folder-card', { hasText: folderName });
+		await newFolder.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
 
 		// Note: Button should be disabled during API call
 		// This test documents expected behavior even if API is unavailable
@@ -180,8 +183,9 @@ test.describe('Folder Creation', () => {
 		const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
 		await newFolderButton.click();
 
-		// Wait for API call
-		await page.waitForTimeout(2000);
+		// Wait for the folder to appear in the UI or API call to complete
+		const newFolder = page.locator('.folder-card', { hasText: folderName });
+		await newFolder.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
 
 		// This test documents that alerts should be shown
 		// If API is working, success alert is shown
@@ -215,8 +219,9 @@ test.describe('Folder Creation', () => {
 		const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
 		await newFolderButton.click();
 
-		// Wait for API call and potential refresh
-		await page.waitForTimeout(3000);
+		// Wait for the folder to appear in the UI (indicating successful creation and refresh)
+		const newFolder = page.locator('.folder-card', { hasText: folderName });
+		await newFolder.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
 
 		// If folder was created successfully, list should refresh
 		if (folderCreated) {
