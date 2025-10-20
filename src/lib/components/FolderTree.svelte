@@ -1,13 +1,13 @@
 <script lang="ts">
 	import type { FolderDto } from '$lib/api/types';
+	import type { Writable } from 'svelte/store';
 	import FolderTreeItem from './FolderTreeItem.svelte';
-	import { writable } from 'svelte/store';
 
 	export let folders: FolderDto[];
 	export let currentFolderId: string = '';
-
-	// Store for tracking which folders are expanded
-	const expandedFolders = writable<Set<string>>(new Set());
+	export let expandedFolders: Writable<Set<string>>;
+	export let toggleExpand: (folderId: string) => void;
+	export let expandFolder: (folderId: string) => void;
 
 	// Build hierarchy from flat list - return only root folders
 	function getRootFolders(folders: FolderDto[]): FolderDto[] {
@@ -17,19 +17,6 @@
 	// Get children of a specific folder
 	function getChildren(folderId: string): FolderDto[] {
 		return folders.filter((folder) => folder.parentId === folderId);
-	}
-
-	// Toggle folder expansion
-	function toggleExpand(folderId: string) {
-		expandedFolders.update((set) => {
-			const newSet = new Set(set);
-			if (newSet.has(folderId)) {
-				newSet.delete(folderId);
-			} else {
-				newSet.add(folderId);
-			}
-			return newSet;
-		});
 	}
 
 	$: rootFolders = getRootFolders(folders);
@@ -43,6 +30,7 @@
 			depth={0}
 			{expandedFolders}
 			{toggleExpand}
+			{expandFolder}
 			{getChildren}
 		/>
 	{/each}
