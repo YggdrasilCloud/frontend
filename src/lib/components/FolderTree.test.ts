@@ -187,6 +187,179 @@ describe('FolderTree Logic', () => {
 			expect(expandedFolders.has('root-1')).toBe(true);
 			expect(expandedFolders.has('child-1')).toBe(true);
 		});
+
+		describe('toggleExpand function', () => {
+			function toggleExpand(folderId: string, expandedFolders: Set<string>): Set<string> {
+				const newSet = new Set(expandedFolders);
+				if (newSet.has(folderId)) {
+					newSet.delete(folderId);
+				} else {
+					newSet.add(folderId);
+				}
+				return newSet;
+			}
+
+			it('should expand folder when collapsed', () => {
+				const expandedFolders = new Set<string>();
+				const result = toggleExpand('root-1', expandedFolders);
+
+				expect(result.has('root-1')).toBe(true);
+				expect(result.size).toBe(1);
+			});
+
+			it('should collapse folder when expanded', () => {
+				const expandedFolders = new Set<string>(['root-1']);
+				const result = toggleExpand('root-1', expandedFolders);
+
+				expect(result.has('root-1')).toBe(false);
+				expect(result.size).toBe(0);
+			});
+
+			it('should toggle multiple times correctly', () => {
+				let expandedFolders = new Set<string>();
+
+				// First toggle: expand
+				expandedFolders = toggleExpand('root-1', expandedFolders);
+				expect(expandedFolders.has('root-1')).toBe(true);
+
+				// Second toggle: collapse
+				expandedFolders = toggleExpand('root-1', expandedFolders);
+				expect(expandedFolders.has('root-1')).toBe(false);
+
+				// Third toggle: expand again
+				expandedFolders = toggleExpand('root-1', expandedFolders);
+				expect(expandedFolders.has('root-1')).toBe(true);
+			});
+
+			it('should not affect other folders', () => {
+				const expandedFolders = new Set<string>(['child-1', 'child-2']);
+				const result = toggleExpand('root-1', expandedFolders);
+
+				expect(result.has('root-1')).toBe(true);
+				expect(result.has('child-1')).toBe(true);
+				expect(result.has('child-2')).toBe(true);
+				expect(result.size).toBe(3);
+			});
+		});
+
+		describe('expandFolder function (expand-only)', () => {
+			function expandFolder(folderId: string, expandedFolders: Set<string>): Set<string> {
+				const newSet = new Set(expandedFolders);
+				newSet.add(folderId);
+				return newSet;
+			}
+
+			it('should expand folder when collapsed', () => {
+				const expandedFolders = new Set<string>();
+				const result = expandFolder('root-1', expandedFolders);
+
+				expect(result.has('root-1')).toBe(true);
+				expect(result.size).toBe(1);
+			});
+
+			it('should keep folder expanded when already expanded', () => {
+				const expandedFolders = new Set<string>(['root-1']);
+				const result = expandFolder('root-1', expandedFolders);
+
+				expect(result.has('root-1')).toBe(true);
+				expect(result.size).toBe(1);
+			});
+
+			it('should be idempotent - multiple calls have same effect', () => {
+				let expandedFolders = new Set<string>();
+
+				expandedFolders = expandFolder('root-1', expandedFolders);
+				expect(expandedFolders.has('root-1')).toBe(true);
+
+				expandedFolders = expandFolder('root-1', expandedFolders);
+				expect(expandedFolders.has('root-1')).toBe(true);
+
+				expandedFolders = expandFolder('root-1', expandedFolders);
+				expect(expandedFolders.has('root-1')).toBe(true);
+
+				expect(expandedFolders.size).toBe(1);
+			});
+
+			it('should expand multiple folders', () => {
+				let expandedFolders = new Set<string>();
+
+				expandedFolders = expandFolder('root-1', expandedFolders);
+				expandedFolders = expandFolder('child-1', expandedFolders);
+				expandedFolders = expandFolder('grandchild-1', expandedFolders);
+
+				expect(expandedFolders.has('root-1')).toBe(true);
+				expect(expandedFolders.has('child-1')).toBe(true);
+				expect(expandedFolders.has('grandchild-1')).toBe(true);
+				expect(expandedFolders.size).toBe(3);
+			});
+
+			it('should never collapse folders', () => {
+				const expandedFolders = new Set<string>(['root-1', 'child-1']);
+				const result = expandFolder('root-1', expandedFolders);
+
+				// Original folders still expanded
+				expect(result.has('root-1')).toBe(true);
+				expect(result.has('child-1')).toBe(true);
+				expect(result.size).toBe(2);
+			});
+		});
+
+		describe('auto-expand parent folders', () => {
+			function autoExpandPath(
+				path: Array<{ id: string }>,
+				expandedFolders: Set<string>
+			): Set<string> {
+				const newSet = new Set(expandedFolders);
+				path.forEach((folder) => {
+					newSet.add(folder.id);
+				});
+				return newSet;
+			}
+
+			it('should expand all folders in path', () => {
+				const path = [{ id: 'root-1' }, { id: 'child-1' }, { id: 'grandchild-1' }];
+				const expandedFolders = new Set<string>();
+
+				const result = autoExpandPath(path, expandedFolders);
+
+				expect(result.has('root-1')).toBe(true);
+				expect(result.has('child-1')).toBe(true);
+				expect(result.has('grandchild-1')).toBe(true);
+				expect(result.size).toBe(3);
+			});
+
+			it('should expand path without affecting already expanded folders', () => {
+				const path = [{ id: 'root-1' }, { id: 'child-1' }];
+				const expandedFolders = new Set<string>(['root-2']);
+
+				const result = autoExpandPath(path, expandedFolders);
+
+				expect(result.has('root-1')).toBe(true);
+				expect(result.has('child-1')).toBe(true);
+				expect(result.has('root-2')).toBe(true);
+				expect(result.size).toBe(3);
+			});
+
+			it('should handle empty path', () => {
+				const path: Array<{ id: string }> = [];
+				const expandedFolders = new Set<string>(['root-1']);
+
+				const result = autoExpandPath(path, expandedFolders);
+
+				expect(result.has('root-1')).toBe(true);
+				expect(result.size).toBe(1);
+			});
+
+			it('should handle single folder path', () => {
+				const path = [{ id: 'root-1' }];
+				const expandedFolders = new Set<string>();
+
+				const result = autoExpandPath(path, expandedFolders);
+
+				expect(result.has('root-1')).toBe(true);
+				expect(result.size).toBe(1);
+			});
+		});
 	});
 
 	describe('Indentation calculation', () => {
