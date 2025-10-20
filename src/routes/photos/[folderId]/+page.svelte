@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { writable } from 'svelte/store';
 	import { useQueryClient } from '@tanstack/svelte-query';
 	import { foldersQuery, folderChildrenQuery, folderPathQuery } from '$lib/api/queries/folders';
 	import { photosQuery } from '$lib/api/queries/photos';
@@ -33,6 +34,31 @@
 
 	let showUploader = false;
 	let selectedPhoto: PhotoDto | null = null;
+
+	// Store for tracking which folders are expanded in the sidebar tree
+	const expandedFolders = writable<Set<string>>(new Set());
+
+	// Toggle folder expansion in the tree (for ▶ button)
+	function toggleExpand(folderId: string) {
+		expandedFolders.update((set) => {
+			const newSet = new Set(set);
+			if (newSet.has(folderId)) {
+				newSet.delete(folderId);
+			} else {
+				newSet.add(folderId);
+			}
+			return newSet;
+		});
+	}
+
+	// Expand folder without closing it (for folder name clicks and folder cards)
+	function expandFolder(folderId: string) {
+		expandedFolders.update((set) => {
+			const newSet = new Set(set);
+			newSet.add(folderId);
+			return newSet;
+		});
+	}
 
 	async function handleNewRootFolder() {
 		const name = prompt('Enter folder name:');
@@ -146,7 +172,13 @@
 				{#if $folders.data.length === 0}
 					<p class="status-message">No folders yet</p>
 				{:else}
-					<FolderTree folders={$folders.data} currentFolderId={folderId} />
+					<FolderTree
+						folders={$folders.data}
+						currentFolderId={folderId}
+						{expandedFolders}
+						{toggleExpand}
+						{expandFolder}
+					/>
 				{/if}
 			{/if}
 		</nav>
@@ -206,7 +238,11 @@
 						<h3>Folders</h3>
 						<div class="grid">
 							{#each $subfolders.data.children as subfolder}
-								<a href="/photos/{subfolder.id}" class="folder-card">
+								<a
+									href="/photos/{subfolder.id}"
+									class="folder-card"
+									on:click={() => expandFolder(subfolder.id)}
+								>
 									<div class="folder-icon">📁</div>
 									<div class="folder-info">
 										<span class="folder-name">{subfolder.name}</span>

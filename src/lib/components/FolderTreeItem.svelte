@@ -7,6 +7,7 @@
 	export let depth: number = 0;
 	export let expandedFolders: Writable<Set<string>>;
 	export let toggleExpand: (folderId: string) => void;
+	export let expandFolder: (folderId: string) => void;
 	export let getChildren: (folderId: string) => FolderDto[];
 
 	$: children = getChildren(folder.id);
@@ -19,6 +20,15 @@
 		event.stopPropagation();
 		toggleExpand(folder.id);
 	}
+
+	function handleItemClick() {
+		// Expand when clicking the folder name (if it has children)
+		// Never collapse - keep folders open once expanded
+		// Navigation will still happen via the href
+		if (hasChildren) {
+			expandFolder(folder.id);
+		}
+	}
 </script>
 
 <div class="folder-tree-item">
@@ -27,6 +37,7 @@
 		class="folder-item"
 		class:active={isActive}
 		style="padding-left: {depth * 1.5 + 0.75}rem"
+		on:click={handleItemClick}
 	>
 		{#if hasChildren}
 			<button class="expand-toggle" on:click={handleToggle} aria-label="Toggle folder">
@@ -47,6 +58,7 @@
 				depth={depth + 1}
 				{expandedFolders}
 				{toggleExpand}
+				{expandFolder}
 				{getChildren}
 			/>
 		{/each}
