@@ -39,8 +39,9 @@ test.describe('Nested Folder Navigation', () => {
 		const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
 		await newFolderButton.click();
 
-		// Wait for API call
-		await page.waitForTimeout(2000);
+		// Wait for the folder to appear in the UI
+		const newFolder = page.locator('.folder-card', { hasText: subfolderName });
+		await newFolder.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
 
 		// Verify prompt was shown
 		expect(promptShown).toBe(true);
@@ -121,11 +122,11 @@ test.describe('Nested Folder Navigation', () => {
 		await firstFolder.click();
 		await page.waitForLoadState('networkidle');
 
-		// Wait a bit for breadcrumb to load
-		await page.waitForTimeout(1000);
+		// Wait for breadcrumb to be visible
+		const breadcrumb = page.locator('.breadcrumb');
+		await breadcrumb.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
 
 		// Check if breadcrumb is displayed
-		const breadcrumb = page.locator('.breadcrumb');
 		const hasBreadcrumb = await breadcrumb.isVisible().catch(() => false);
 
 		if (hasBreadcrumb) {
@@ -161,10 +162,10 @@ test.describe('Nested Folder Navigation', () => {
 		// Click into subfolder
 		await subfolderCard.click();
 		await page.waitForLoadState('networkidle');
-		await page.waitForTimeout(1000);
 
-		// Check breadcrumb
+		// Wait for breadcrumb to update
 		const breadcrumb = page.locator('.breadcrumb');
+		await breadcrumb.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
 		const hasBreadcrumb = await breadcrumb.isVisible().catch(() => false);
 
 		if (hasBreadcrumb) {
@@ -206,10 +207,10 @@ test.describe('Nested Folder Navigation', () => {
 		// Click into subfolder
 		await subfolderCard.click();
 		await page.waitForLoadState('networkidle');
-		await page.waitForTimeout(1000);
 
-		// Check breadcrumb
+		// Wait for breadcrumb to update
 		const breadcrumb = page.locator('.breadcrumb');
+		await breadcrumb.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
 		const hasBreadcrumb = await breadcrumb.isVisible().catch(() => false);
 
 		if (!hasBreadcrumb) {
@@ -242,7 +243,13 @@ test.describe('Nested Folder Navigation', () => {
 
 		await firstFolder.click();
 		await page.waitForLoadState('networkidle');
-		await page.waitForTimeout(1000);
+
+		// Wait for content to load
+		await page
+			.locator('.folders-section, .photos-section')
+			.first()
+			.waitFor({ state: 'visible', timeout: 5000 })
+			.catch(() => {});
 
 		// Check for folders section
 		const foldersSection = page.locator('.folders-section');
@@ -311,7 +318,9 @@ test.describe('Nested Folder Navigation', () => {
 
 		await firstFolder.click();
 		await page.waitForLoadState('networkidle');
-		await page.waitForTimeout(1000);
+
+		// Wait for page content to render
+		await page.locator('h1').waitFor({ state: 'visible', timeout: 5000 });
 
 		// Check if empty state message is shown
 		const emptyMessage = page.locator('text=/no photos or folders/i');

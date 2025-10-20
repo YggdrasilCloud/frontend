@@ -45,7 +45,9 @@ test.describe('Folder Tree Expansion Behavior', () => {
 		// Go directly to the subfolder URL
 		await page.goto(subfolderUrl);
 		await page.waitForLoadState('networkidle');
-		await page.waitForTimeout(1000); // Wait for expansion logic
+
+		// Wait for the folder tree items to appear in the sidebar
+		await page.locator('.folder-tree-item').first().waitFor({ state: 'visible', timeout: 10000 });
 
 		// Verify that parent folders are expanded in the sidebar
 		// The folder items should be visible (not hidden by collapsed parent)
@@ -91,13 +93,12 @@ test.describe('Folder Tree Expansion Behavior', () => {
 		// Click the folder card
 		await subfolderCard.click();
 		await page.waitForLoadState('networkidle');
-		await page.waitForTimeout(500); // Wait for expansion
 
-		// Verify the folder is now expanded in the sidebar
-		// Look for the triangle icon that indicates expanded state (▼)
+		// Wait for the triangle to be visible in the sidebar
 		const expandedFolder = page
 			.locator('.folder-item', { hasText: subfolderName })
 			.locator('.triangle');
+		await expandedFolder.waitFor({ state: 'visible', timeout: 5000 });
 		const triangleText = await expandedFolder.textContent();
 
 		// The triangle should be ▼ (expanded) or the folder should at least be visible
@@ -120,7 +121,9 @@ test.describe('Folder Tree Expansion Behavior', () => {
 		// First expand by clicking the triangle
 		const triangleButton = folderWithChildren.locator('.expand-toggle').first();
 		await triangleButton.click();
-		await page.waitForTimeout(300);
+
+		// Wait for the triangle to change to expanded state
+		await expect(triangleButton.locator('.triangle')).toHaveText('▼', { timeout: 5000 });
 
 		// Verify it's expanded (triangle should be ▼)
 		let triangleText = await triangleButton.locator('.triangle').textContent();
@@ -134,7 +137,9 @@ test.describe('Folder Tree Expansion Behavior', () => {
 		// Navigate back to verify the folder stays expanded
 		await page.goBack();
 		await page.waitForLoadState('networkidle');
-		await page.waitForTimeout(300);
+
+		// Wait for the triangle to be visible again
+		await triangleButton.locator('.triangle').waitFor({ state: 'visible', timeout: 5000 });
 
 		// The folder should still be expanded
 		triangleText = await triangleButton.locator('.triangle').textContent();
@@ -157,7 +162,9 @@ test.describe('Folder Tree Expansion Behavior', () => {
 		// Expand the folder
 		const triangleButton = folderWithChildren.locator('.expand-toggle').first();
 		await triangleButton.click();
-		await page.waitForTimeout(300);
+
+		// Wait for the triangle to change to expanded state
+		await expect(triangleButton.locator('.triangle')).toHaveText('▼', { timeout: 5000 });
 
 		// Verify it's expanded
 		let triangleText = await triangleButton.locator('.triangle').textContent();
@@ -170,12 +177,13 @@ test.describe('Folder Tree Expansion Behavior', () => {
 		if (hasSubfolder) {
 			await subfolder.click();
 			await page.waitForLoadState('networkidle');
-			await page.waitForTimeout(300);
 
 			// Navigate back
 			await page.goBack();
 			await page.waitForLoadState('networkidle');
-			await page.waitForTimeout(300);
+
+			// Wait for the triangle to be visible again
+			await triangleButton.locator('.triangle').waitFor({ state: 'visible', timeout: 5000 });
 
 			// The original folder should still be expanded
 			triangleText = await triangleButton.locator('.triangle').textContent();
@@ -199,7 +207,9 @@ test.describe('Folder Tree Expansion Behavior', () => {
 		// Expand the folder by clicking triangle
 		const triangleButton = folderWithChildren.locator('.expand-toggle').first();
 		await triangleButton.click();
-		await page.waitForTimeout(300);
+
+		// Wait for the triangle to change to expanded state
+		await expect(triangleButton.locator('.triangle')).toHaveText('▼', { timeout: 5000 });
 
 		// Verify it's expanded
 		let triangleText = await triangleButton.locator('.triangle').textContent();
@@ -207,7 +217,9 @@ test.describe('Folder Tree Expansion Behavior', () => {
 
 		// Click triangle again to collapse
 		await triangleButton.click();
-		await page.waitForTimeout(300);
+
+		// Wait for the triangle to change to collapsed state
+		await expect(triangleButton.locator('.triangle')).toHaveText('▶', { timeout: 5000 });
 
 		// Verify it's now collapsed
 		triangleText = await triangleButton.locator('.triangle').textContent();
@@ -256,7 +268,12 @@ test.describe('Folder Tree Expansion Behavior', () => {
 			await page.waitForLoadState('networkidle');
 			await page.goto(deepUrl);
 			await page.waitForLoadState('networkidle');
-			await page.waitForTimeout(1000);
+
+			// Wait for at least one expanded folder to appear
+			await page
+				.locator('.folder-item .triangle:has-text("▼")')
+				.first()
+				.waitFor({ state: 'visible', timeout: 10000 });
 
 			// Verify multiple levels are expanded
 			const expandedFolders = page.locator('.folder-item .triangle:has-text("▼")');
