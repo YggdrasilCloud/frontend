@@ -8,7 +8,7 @@ export interface FolderDto {
 export interface PhotoDto {
 	id: string;
 	fileName: string;
-	storagePath: string;
+	storageKey: string;
 	mimeType: string;
 	sizeInBytes: number;
 	uploadedAt: string;

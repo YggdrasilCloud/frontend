@@ -9,7 +9,7 @@ describe('PhotoUrlBuilder', () => {
 	const createPhotoDto = (overrides: Partial<PhotoDto> = {}): PhotoDto => ({
 		id: '123e4567-e89b-12d3-a456-426614174000',
 		fileName: 'test.jpg',
-		storagePath: '/uploads/photos/test.jpg',
+		storageKey: 'photos/folder-id/photo-id',
 		mimeType: 'image/jpeg',
 		sizeInBytes: 1024000,
 		uploadedAt: '2024-10-11T14:30:00.000Z',

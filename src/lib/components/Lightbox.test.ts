@@ -13,7 +13,7 @@ describe('Lightbox Logic', () => {
 		{
 			id: 'photo-1',
 			fileName: 'photo1.jpg',
-			storagePath: '/uploads/photo1.jpg',
+			storageKey: 'photos/folder-id/photo-1',
 			mimeType: 'image/jpeg',
 			sizeInBytes: 1024000,
 			uploadedAt: '2024-10-11T14:30:00.000Z',
@@ -23,7 +23,7 @@ describe('Lightbox Logic', () => {
 		{
 			id: 'photo-2',
 			fileName: 'photo2.jpg',
-			storagePath: '/uploads/photo2.jpg',
+			storageKey: 'photos/folder-id/photo-2',
 			mimeType: 'image/jpeg',
 			sizeInBytes: 2048000,
 			uploadedAt: '2024-10-11T14:31:00.000Z',
@@ -33,7 +33,7 @@ describe('Lightbox Logic', () => {
 		{
 			id: 'photo-3',
 			fileName: 'photo3.jpg',
-			storagePath: '/uploads/photo3.jpg',
+			storageKey: 'photos/folder-id/photo-3',
 			mimeType: 'image/jpeg',
 			sizeInBytes: 3072000,
 			uploadedAt: '2024-10-11T14:32:00.000Z',
