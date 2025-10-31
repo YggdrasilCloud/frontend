@@ -390,13 +390,15 @@
 
 						<!-- Pagination controls -->
 						{#if $photos.data.pagination.total > perPage}
-							<Pagination
-								{currentPage}
-								totalPages={Math.ceil($photos.data.pagination.total / perPage)}
-								totalItems={$photos.data.pagination.total}
-								onPageChange={handlePageChange}
-								itemName="photos"
-							/>
+							{#key currentPage}
+								<Pagination
+									{currentPage}
+									totalPages={Math.ceil($photos.data.pagination.total / perPage)}
+									totalItems={$photos.data.pagination.total}
+									onPageChange={handlePageChange}
+									itemName="photos"
+								/>
+							{/key}
 						{/if}
 					</div>
 				{/if}
