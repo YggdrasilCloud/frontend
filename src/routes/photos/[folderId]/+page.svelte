@@ -79,8 +79,18 @@
 		})
 	);
 
-	// Flatten all photos from all pages
-	const allPhotos = $derived($photos.data?.pages.flatMap((page) => page.data) ?? []);
+	// Flatten all photos from all pages and deduplicate by ID
+	const allPhotos = $derived(() => {
+		if (!$photos.data?.pages) return [];
+
+		const photosMap = new Map();
+		for (const page of $photos.data.pages) {
+			for (const photo of page.data) {
+				photosMap.set(photo.id, photo);
+			}
+		}
+		return Array.from(photosMap.values());
+	});
 	const totalPhotos = $derived($photos.data?.pages[0]?.pagination.total ?? 0);
 
 	// Debug logging
