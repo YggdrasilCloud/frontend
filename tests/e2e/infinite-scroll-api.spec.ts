@@ -61,11 +61,13 @@ test.describe('Infinite Scroll API Calls', () => {
 		// Clear previous requests
 		apiRequests.length = 0;
 
-		// Scroll to bottom to trigger infinite scroll
-		console.log('Scrolling to bottom...');
-		await page.evaluate(() => {
-			window.scrollTo(0, document.body.scrollHeight);
-		});
+		// Scroll the load-more-trigger into view to trigger Intersection Observer
+		console.log('Scrolling load-more-trigger into view...');
+		const trigger = page.locator('.load-more-trigger');
+		await trigger.scrollIntoViewIfNeeded();
+
+		// Wait a bit for Intersection Observer to trigger
+		await page.waitForTimeout(500);
 
 		// Wait for loading indicator
 		const loadingIndicator = page.locator('.loading-more');
@@ -77,7 +79,7 @@ test.describe('Infinite Scroll API Calls', () => {
 		}
 
 		// Wait for page 2 API call
-		await page.waitForTimeout(2000);
+		await page.waitForTimeout(1500);
 
 		// Verify page 2 API call was made
 		const page2Request = apiRequests.find((url) => url.includes('page=2'));
