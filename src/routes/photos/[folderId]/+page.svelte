@@ -31,6 +31,9 @@
 	let currentPage = 1;
 	const perPage = 50;
 
+	// Create a stringified version of params for reactivity
+	$: paramsKey = JSON.stringify(photoParams);
+
 	// Reset page when folder changes
 	$: if (folderId !== previousFolderId) {
 		previousFolderId = folderId;
@@ -39,7 +42,7 @@
 
 	// Handle filter changes
 	function handleParamsChange(newParams: PhotoQueryParams) {
-		photoParams = newParams;
+		photoParams = { ...newParams }; // Create new object reference
 		currentPage = 1;
 	}
 
@@ -71,9 +74,9 @@
 	$: subfolders = folderChildrenQuery(folderId, {}, 1, 1000);
 	$: folderPath = folderPathQuery(folderId);
 
-	// Photos query - use createQuery directly with reactive options
+	// Photos query - use paramsKey to trigger reactivity when params object changes
 	$: photos = createQuery({
-		queryKey: ['photos', folderId, currentPage, perPage, photoParams],
+		queryKey: ['photos', folderId, currentPage, perPage, paramsKey],
 		queryFn: async () => {
 			const queryString = buildPhotoQueryString({
 				...photoParams,
@@ -382,7 +385,7 @@
 						<!-- Pagination controls -->
 						{#if $photos.data.pagination.total > perPage}
 							<Pagination
-								currentPage={$photos.data.pagination.page}
+								{currentPage}
 								totalPages={Math.ceil($photos.data.pagination.total / perPage)}
 								totalItems={$photos.data.pagination.total}
 								onPageChange={handlePageChange}
