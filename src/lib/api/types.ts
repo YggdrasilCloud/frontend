@@ -12,8 +12,21 @@ export interface PhotoDto {
 	mimeType: string;
 	sizeInBytes: number;
 	uploadedAt: string;
+	takenAt: string | null; // EXIF capture date if available
 	fileUrl: string;
 	thumbnailUrl: string | null; // null for old photos without thumbnails
+}
+
+export interface PhotoQueryParams {
+	sortBy?: 'uploadedAt' | 'takenAt' | 'fileName' | 'sizeInBytes' | 'mimeType';
+	sortOrder?: 'asc' | 'desc';
+	search?: string;
+	mimeType?: string | string[]; // Supports comma-separated or array
+	extension?: string | string[];
+	sizeMin?: number;
+	sizeMax?: number;
+	dateFrom?: string; // ISO 8601
+	dateTo?: string; // ISO 8601
 }
 
 export interface ListPhotosResponse {
@@ -23,6 +36,18 @@ export interface ListPhotosResponse {
 		perPage: number;
 		total: number;
 	};
+	filters: {
+		sortBy: string;
+		sortOrder: string;
+		search: string | null;
+		mimeTypes: string[];
+		extensions: string[];
+		sizeMin: number | null;
+		sizeMax: number | null;
+		dateFrom: string | null;
+		dateTo: string | null;
+		appliedFilters: number;
+	};
 }
 
 export interface CreateFolderRequest {
@@ -31,8 +56,46 @@ export interface CreateFolderRequest {
 	parentId?: string;
 }
 
+export interface FolderQueryParams {
+	sortBy?: 'name' | 'createdAt';
+	sortOrder?: 'asc' | 'desc';
+	search?: string;
+	dateFrom?: string; // ISO 8601
+	dateTo?: string; // ISO 8601
+}
+
 export interface GetFolderChildrenResponse {
-	children: FolderDto[];
+	data: FolderDto[];
+	pagination: {
+		page: number;
+		perPage: number;
+		total: number;
+	};
+	filters: {
+		sortBy: string;
+		sortOrder: string;
+		search: string | null;
+		dateFrom: string | null;
+		dateTo: string | null;
+		appliedFilters: number;
+	};
+}
+
+export interface ListFoldersResponse {
+	data: FolderDto[];
+	pagination: {
+		page: number;
+		perPage: number;
+		total: number;
+	};
+	filters: {
+		sortBy: string;
+		sortOrder: string;
+		search: string | null;
+		dateFrom: string | null;
+		dateTo: string | null;
+		appliedFilters: number;
+	};
 }
 
 export interface PathSegmentDto {

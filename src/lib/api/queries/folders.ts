@@ -1,12 +1,23 @@
 import { createQuery } from '@tanstack/svelte-query';
 import { apiClient } from '../client';
-import type { FolderDto, GetFolderChildrenResponse, GetFolderPathResponse } from '../types';
+import type {
+	FolderDto,
+	GetFolderChildrenResponse,
+	GetFolderPathResponse,
+	ListFoldersResponse,
+	FolderQueryParams
+} from '../types';
+import { buildFolderQueryString } from '../utils/buildQueryString';
 
-export const foldersQuery = () =>
+/**
+ * Query for fetching all folders with sorting and filtering support.
+ */
+export const foldersQuery = (params: FolderQueryParams = {}, page = 1, perPage = 50) =>
 	createQuery({
-		queryKey: ['folders'],
+		queryKey: ['folders', page, perPage, params],
 		queryFn: async () => {
-			return apiClient.get<FolderDto[]>('/api/folders');
+			const queryString = buildFolderQueryString({ ...params, page, perPage });
+			return apiClient.get<ListFoldersResponse>(`/api/folders${queryString}`);
 		}
 	});
 
@@ -19,13 +30,25 @@ export const folderQuery = (folderId: string) =>
 		enabled: !!folderId
 	});
 
-export const folderChildrenQuery = (folderId: string) =>
+/**
+ * Query for fetching folder children (subfolders) with sorting and filtering support.
+ */
+export const folderChildrenQuery = (
+	folderId: string,
+	params: FolderQueryParams = {},
+	page = 1,
+	perPage = 50
+) =>
 	createQuery({
-		queryKey: ['folders', folderId, 'children'],
+		queryKey: ['folders', folderId, 'children', page, perPage, params],
 		queryFn: async () => {
-			return apiClient.get<GetFolderChildrenResponse>(`/api/folders/${folderId}/children`);
+			const queryString = buildFolderQueryString({ ...params, page, perPage });
+			return apiClient.get<GetFolderChildrenResponse>(
+				`/api/folders/${folderId}/children${queryString}`
+			);
 		},
-		enabled: !!folderId
+		enabled: !!folderId,
+		staleTime: 60_000
 	});
 
 export const folderPathQuery = (folderId: string) =>
