@@ -83,14 +83,37 @@
 	const allPhotos = $derived($photos.data?.pages.flatMap((page) => page.data) ?? []);
 	const totalPhotos = $derived($photos.data?.pages[0]?.pagination.total ?? 0);
 
+	// Debug logging
+	$effect(() => {
+		console.log('📊 Photos state:', {
+			pagesLoaded: $photos.data?.pages.length ?? 0,
+			photosInPages: allPhotos.length,
+			totalPhotos,
+			hasNextPage: $photos.hasNextPage,
+			isFetching: $photos.isFetchingNextPage
+		});
+	});
+
 	// Setup Intersection Observer for infinite scroll
 	$effect(() => {
-		if (!loadMoreTrigger) return;
+		if (!loadMoreTrigger) {
+			console.log('⚠️ loadMoreTrigger not available yet');
+			return;
+		}
+
+		console.log('✅ Setting up Intersection Observer');
 
 		const observer = new IntersectionObserver(
 			(entries) => {
 				const [entry] = entries;
+				console.log('👁️ Intersection:', {
+					isIntersecting: entry.isIntersecting,
+					hasNextPage: $photos.hasNextPage,
+					isFetching: $photos.isFetchingNextPage
+				});
+
 				if (entry.isIntersecting && $photos.hasNextPage && !$photos.isFetchingNextPage) {
+					console.log('🚀 Fetching next page...');
 					$photos.fetchNextPage();
 				}
 			},
@@ -100,6 +123,7 @@
 		observer.observe(loadMoreTrigger);
 
 		return () => {
+			console.log('🧹 Cleaning up Intersection Observer');
 			observer.disconnect();
 		};
 	});
