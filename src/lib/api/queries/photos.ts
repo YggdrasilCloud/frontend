@@ -22,9 +22,7 @@ export const photosQuery = (
 		queryKey: ['photos', folderId, page, perPage, params],
 		queryFn: async () => {
 			const queryString = buildPhotoQueryString({ ...params, page, perPage });
-			return apiClient.get<ListPhotosResponse>(
-				`/api/folders/${folderId}/photos${queryString}`
-			);
+			return apiClient.get<ListPhotosResponse>(`/api/folders/${folderId}/photos${queryString}`);
 		},
 		enabled: !!folderId,
 		staleTime: 60_000, // Cache for 1 minute

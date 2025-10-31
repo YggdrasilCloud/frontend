@@ -89,7 +89,18 @@
 				photosMap.set(photo.id, photo);
 			}
 		}
-		return Array.from(photosMap.values());
+		const uniquePhotos = Array.from(photosMap.values());
+
+		// Log duplicates
+		const totalPhotos = $photos.data.pages.flatMap((p) => p.data).length;
+		if (totalPhotos !== uniquePhotos.length) {
+			console.warn(`⚠️ Removed ${totalPhotos - uniquePhotos.length} duplicate photos`, {
+				total: totalPhotos,
+				unique: uniquePhotos.length
+			});
+		}
+
+		return uniquePhotos;
 	});
 	const totalPhotos = $derived($photos.data?.pages[0]?.pagination.total ?? 0);
 

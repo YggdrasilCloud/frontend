@@ -23,14 +23,6 @@
 		setSearch(value);
 	}
 
-	// Handle sort changes (no debounce needed - immediate feedback)
-	function handleSortChange(field: PhotoQueryParams['sortBy']) {
-		// Toggle sort order if clicking same field, otherwise default to desc
-		const newOrder =
-			params.sortBy === field && params.sortOrder === 'desc' ? 'asc' : 'desc';
-		onParamsChange({ ...params, sortBy: field, sortOrder: newOrder });
-	}
-
 	// Clear all filters
 	function clearFilters() {
 		searchInput = '';

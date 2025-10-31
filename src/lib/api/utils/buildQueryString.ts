@@ -22,9 +22,7 @@ export function buildPhotoQueryString(
 
 	// Handle array parameters (mimeType, extension)
 	if (params.mimeType) {
-		const mimeTypes = Array.isArray(params.mimeType)
-			? params.mimeType.join(',')
-			: params.mimeType;
+		const mimeTypes = Array.isArray(params.mimeType) ? params.mimeType.join(',') : params.mimeType;
 		if (mimeTypes) searchParams.set('mimeType', mimeTypes);
 	}
 
