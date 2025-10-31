@@ -17,6 +17,7 @@ describe('Lightbox Logic', () => {
 			mimeType: 'image/jpeg',
 			sizeInBytes: 1024000,
 			uploadedAt: '2024-10-11T14:30:00.000Z',
+			takenAt: null,
 			fileUrl: '/uploads/photo1.jpg',
 			thumbnailUrl: '/uploads/thumbnails/photo1_300x300.jpg'
 		},
@@ -27,6 +28,7 @@ describe('Lightbox Logic', () => {
 			mimeType: 'image/jpeg',
 			sizeInBytes: 2048000,
 			uploadedAt: '2024-10-11T14:31:00.000Z',
+			takenAt: null,
 			fileUrl: '/uploads/photo2.jpg',
 			thumbnailUrl: '/uploads/thumbnails/photo2_300x300.jpg'
 		},
@@ -37,6 +39,7 @@ describe('Lightbox Logic', () => {
 			mimeType: 'image/jpeg',
 			sizeInBytes: 3072000,
 			uploadedAt: '2024-10-11T14:32:00.000Z',
+			takenAt: null,
 			fileUrl: '/uploads/photo3.jpg',
 			thumbnailUrl: '/uploads/thumbnails/photo3_300x300.jpg'
 		}

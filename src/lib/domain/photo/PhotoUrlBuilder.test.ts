@@ -13,6 +13,7 @@ describe('PhotoUrlBuilder', () => {
 		mimeType: 'image/jpeg',
 		sizeInBytes: 1024000,
 		uploadedAt: '2024-10-11T14:30:00.000Z',
+		takenAt: null,
 		fileUrl: '/uploads/photos/test.jpg',
 		thumbnailUrl: '/uploads/thumbnails/test_300x300.jpg',
 		...overrides
