@@ -401,7 +401,7 @@
 							<span class="photos-info">{totalPhotos} photos</span>
 						</div>
 						<div class="grid">
-							{#each allPhotos as photo}
+							{#each allPhotos as photo (photo.id)}
 								<div
 									class="photo-card"
 									onclick={() => openLightbox(photo)}
