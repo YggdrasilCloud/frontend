@@ -46,9 +46,16 @@
 		currentPage = 1;
 	}
 
-	// Handle page changes
+	const queryClient = useQueryClient();
+
+	// Handle page changes - invalidate queries to force refetch
 	function handlePageChange(page: number) {
 		currentPage = page;
+
+		// Invalidate the photos query to force a refetch with new page
+		queryClient.invalidateQueries({
+			queryKey: ['photos', folderId]
+		});
 
 		// Scroll to top
 		setTimeout(() => {
@@ -91,7 +98,6 @@
 	});
 
 	const createFolder = createFolderMutation();
-	const queryClient = useQueryClient();
 
 	// Initialize domain services
 	const apiBaseUrl = env.PUBLIC_API_URL || 'http://localhost:8888';
