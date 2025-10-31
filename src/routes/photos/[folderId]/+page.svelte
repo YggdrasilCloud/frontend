@@ -1,9 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { writable } from 'svelte/store';
-	import { useQueryClient } from '@tanstack/svelte-query';
+	import { useQueryClient, createQuery } from '@tanstack/svelte-query';
 	import { foldersQuery, folderChildrenQuery, folderPathQuery } from '$lib/api/queries/folders';
-	import { photosQuery } from '$lib/api/queries/photos';
 	import { createFolderMutation } from '$lib/api/mutations/createFolder';
 	import UppyUploader from '$lib/components/UppyUploader.svelte';
 	import Lightbox from '$lib/components/Lightbox.svelte';
@@ -12,17 +11,19 @@
 	import PhotoFilters from '$lib/components/PhotoFilters.svelte';
 	import Pagination from '$lib/components/Pagination.svelte';
 	import { env } from '$env/dynamic/public';
-	import type { PhotoDto, PhotoQueryParams } from '$lib/api/types';
+	import type { PhotoDto, PhotoQueryParams, ListPhotosResponse } from '$lib/api/types';
 	import { PhotoUrlBuilder } from '$lib/domain/photo/PhotoUrlBuilder';
 	import { PhotoFileSizeFormatter } from '$lib/domain/photo/PhotoFileSizeFormatter';
 	import { FolderNameValidator } from '$lib/domain/folder/FolderNameValidator';
 	import { UploadConfiguration } from '$lib/domain/shared/UploadConfiguration';
+	import { apiClient } from '$lib/api/client';
+	import { buildPhotoQueryString } from '$lib/api/utils/buildQueryString';
 
 	// Simple reactive folder ID
 	$: folderId = $page.params.folderId ?? '';
 	let previousFolderId = folderId;
 
-	// Photo filtering and sorting state - simple let variables
+	// Photo filtering and sorting state
 	let photoParams: PhotoQueryParams = {
 		sortBy: 'uploadedAt',
 		sortOrder: 'desc'
@@ -30,27 +31,21 @@
 	let currentPage = 1;
 	const perPage = 50;
 
-	// Version counter to force reactivity
-	let queryVersion = 0;
-
 	// Reset page when folder changes
 	$: if (folderId !== previousFolderId) {
 		previousFolderId = folderId;
 		currentPage = 1;
-		queryVersion++;
 	}
 
 	// Handle filter changes
 	function handleParamsChange(newParams: PhotoQueryParams) {
 		photoParams = newParams;
 		currentPage = 1;
-		queryVersion++;
 	}
 
-	// Handle page changes - increment version to force reactive update
+	// Handle page changes
 	function handlePageChange(page: number) {
 		currentPage = page;
-		queryVersion++;
 
 		// Scroll to top
 		setTimeout(() => {
@@ -76,9 +71,21 @@
 	$: subfolders = folderChildrenQuery(folderId, {}, 1, 1000);
 	$: folderPath = folderPathQuery(folderId);
 
-	// Photos query - recreated when queryVersion changes
-	// queryVersion forces Svelte to detect changes in currentPage/photoParams
-	$: photos = photosQuery(folderId, photoParams, currentPage + queryVersion * 0, perPage);
+	// Photos query - use createQuery directly with reactive options
+	$: photos = createQuery({
+		queryKey: ['photos', folderId, currentPage, perPage, photoParams],
+		queryFn: async () => {
+			const queryString = buildPhotoQueryString({
+				...photoParams,
+				page: currentPage,
+				perPage
+			});
+			return apiClient.get<ListPhotosResponse>(`/api/folders/${folderId}/photos${queryString}`);
+		},
+		enabled: !!folderId,
+		staleTime: 60_000,
+		retry: 1
+	});
 
 	const createFolder = createFolderMutation();
 	const queryClient = useQueryClient();
