@@ -80,7 +80,7 @@
 	);
 
 	// Flatten all photos from all pages and deduplicate by ID
-	const allPhotos = $derived(() => {
+	const allPhotos = $derived.by(() => {
 		if (!$photos.data?.pages) return [];
 
 		const photosMap = new Map();
