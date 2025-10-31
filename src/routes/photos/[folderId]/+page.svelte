@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { writable } from 'svelte/store';
+	import { goto } from '$app/navigation';
+	import { get, writable } from 'svelte/store';
 	import { useQueryClient, createQuery } from '@tanstack/svelte-query';
 	import { foldersQuery, folderChildrenQuery, folderPathQuery } from '$lib/api/queries/folders';
 	import { createFolderMutation } from '$lib/api/mutations/createFolder';
@@ -28,7 +29,9 @@
 		sortBy: 'uploadedAt',
 		sortOrder: 'desc'
 	};
-	let currentPage = 1;
+
+	// Read current page from URL, default to 1
+	$: currentPage = parseInt($page.url.searchParams.get('page') || '1', 10);
 	const perPage = 50;
 
 	// Create a stringified version of params for reactivity
@@ -37,20 +40,39 @@
 	// Reset page when folder changes
 	$: if (folderId !== previousFolderId) {
 		previousFolderId = folderId;
-		currentPage = 1;
+		// Clear page param when changing folders
+		if (currentPage !== 1) {
+			const url = new URL(get(page).url);
+			url.searchParams.delete('page');
+			goto(url.toString(), { replaceState: true, noScroll: true });
+		}
 	}
 
 	// Handle filter changes
 	function handleParamsChange(newParams: PhotoQueryParams) {
 		photoParams = { ...newParams }; // Create new object reference
-		currentPage = 1;
+		// Reset to page 1 when filters change
+		if (currentPage !== 1) {
+			const url = new URL(get(page).url);
+			url.searchParams.delete('page');
+			goto(url.toString(), { replaceState: true, noScroll: true });
+		}
 	}
 
 	const queryClient = useQueryClient();
 
-	// Handle page changes - invalidate queries to force refetch
-	function handlePageChange(page: number) {
-		currentPage = page;
+	// Handle page changes - update URL to trigger reactivity
+	function handlePageChange(pageNumber: number) {
+		// Update URL with new page number
+		const url = new URL(get(page).url);
+		if (pageNumber === 1) {
+			url.searchParams.delete('page');
+		} else {
+			url.searchParams.set('page', pageNumber.toString());
+		}
+
+		// Navigate to new URL (this will trigger currentPage reactivity)
+		goto(url.toString(), { noScroll: false });
 
 		// Invalidate the photos query to force a refetch with new page
 		queryClient.invalidateQueries({
