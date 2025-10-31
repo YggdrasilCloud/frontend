@@ -6,7 +6,7 @@
 	import { FolderNameValidator } from '$lib/domain/folder/FolderNameValidator';
 	import { UploadConfiguration } from '$lib/domain/shared/UploadConfiguration';
 
-	const folders = foldersQuery();
+	const folders = foldersQuery({}, 1, 1000);
 	const createFolder = createFolderMutation();
 
 	// Reactive computations using domain services
@@ -70,7 +70,7 @@
 				</details>
 			</div>
 		{:else if $folders.data}
-			{#if $folders.data.length === 0}
+			{#if $folders.data.data.length === 0}
 				<div class="welcome">
 					<h2>Welcome to YggdrasilCloud!</h2>
 					<p>Get started by creating your first folder to organize your photos.</p>
@@ -80,7 +80,7 @@
 				</div>
 			{:else}
 				<div class="folders-grid">
-					{#each $folders.data as folder}
+					{#each $folders.data.data as folder}
 						<a href="/photos/{folder.id}" class="folder-card">
 							<div class="folder-icon">📁</div>
 							<div class="folder-info">

@@ -9,18 +9,76 @@
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import FolderTree from '$lib/components/FolderTree.svelte';
+	import PhotoFilters from '$lib/components/PhotoFilters.svelte';
+	import Pagination from '$lib/components/Pagination.svelte';
 	import { env } from '$env/dynamic/public';
-	import type { PhotoDto } from '$lib/api/types';
+	import type { PhotoDto, PhotoQueryParams } from '$lib/api/types';
 	import { PhotoUrlBuilder } from '$lib/domain/photo/PhotoUrlBuilder';
 	import { PhotoFileSizeFormatter } from '$lib/domain/photo/PhotoFileSizeFormatter';
 	import { FolderNameValidator } from '$lib/domain/folder/FolderNameValidator';
 	import { UploadConfiguration } from '$lib/domain/shared/UploadConfiguration';
 
+	// Simple reactive folder ID
 	$: folderId = $page.params.folderId ?? '';
-	$: folders = foldersQuery();
-	$: subfolders = folderChildrenQuery(folderId);
+	let previousFolderId = folderId;
+
+	// Photo filtering and sorting state - simple let variables
+	let photoParams: PhotoQueryParams = {
+		sortBy: 'uploadedAt',
+		sortOrder: 'desc'
+	};
+	let currentPage = 1;
+	const perPage = 50;
+
+	// Version counter to force reactivity
+	let queryVersion = 0;
+
+	// Reset page when folder changes
+	$: if (folderId !== previousFolderId) {
+		previousFolderId = folderId;
+		currentPage = 1;
+		queryVersion++;
+	}
+
+	// Handle filter changes
+	function handleParamsChange(newParams: PhotoQueryParams) {
+		photoParams = newParams;
+		currentPage = 1;
+		queryVersion++;
+	}
+
+	// Handle page changes - increment version to force reactive update
+	function handlePageChange(page: number) {
+		currentPage = page;
+		queryVersion++;
+
+		// Scroll to top
+		setTimeout(() => {
+			const photosSection = document.querySelector('.photos-section');
+			if (photosSection) {
+				photosSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}
+		}, 100);
+	}
+
+	// Calculate applied filters count
+	$: appliedFiltersCount =
+		(photoParams.search ? 1 : 0) +
+		(photoParams.mimeType ? 1 : 0) +
+		(photoParams.extension ? 1 : 0) +
+		(photoParams.sizeMin !== undefined ? 1 : 0) +
+		(photoParams.sizeMax !== undefined ? 1 : 0) +
+		(photoParams.dateFrom ? 1 : 0) +
+		(photoParams.dateTo ? 1 : 0);
+
+	// Create queries using helper functions
+	const folders = foldersQuery({}, 1, 1000);
+	$: subfolders = folderChildrenQuery(folderId, {}, 1, 1000);
 	$: folderPath = folderPathQuery(folderId);
-	$: photos = photosQuery(folderId, 1, 50);
+
+	// Photos query - recreated when queryVersion changes
+	// queryVersion forces Svelte to detect changes in currentPage/photoParams
+	$: photos = photosQuery(folderId, photoParams, currentPage + queryVersion * 0, perPage);
 
 	const createFolder = createFolderMutation();
 	const queryClient = useQueryClient();
@@ -177,11 +235,11 @@
 					<a href="/photos">← Go to Photos Home</a>
 				</p>
 			{:else if $folders.data}
-				{#if $folders.data.length === 0}
+				{#if $folders.data.data.length === 0}
 					<p class="status-message">No folders yet</p>
 				{:else}
 					<FolderTree
-						folders={$folders.data}
+						folders={$folders.data.data}
 						currentFolderId={folderId}
 						{expandedFolders}
 						{toggleExpand}
@@ -215,6 +273,17 @@
 			<Breadcrumb path={$folderPath.data.path} />
 		{/if}
 
+		<!-- Photo filters - only show when there are photos or active filters -->
+		{#if $photos.data && ($photos.data.data.length > 0 || appliedFiltersCount > 0)}
+			<div class="filters-wrapper">
+				<PhotoFilters
+					params={photoParams}
+					onParamsChange={handleParamsChange}
+					{appliedFiltersCount}
+				/>
+			</div>
+		{/if}
+
 		<div class="photos-grid">
 			{#if showUploader}
 				<div class="uploader-container">
@@ -241,11 +310,11 @@
 							<p class="error-message">{$subfolders.error.message}</p>
 						</details>
 					</div>
-				{:else if $subfolders.data && $subfolders.data.children.length > 0}
+				{:else if $subfolders.data && $subfolders.data.data.length > 0}
 					<div class="folders-section">
 						<h3>Folders</h3>
 						<div class="grid">
-							{#each $subfolders.data.children as subfolder}
+							{#each $subfolders.data.data as subfolder}
 								<a
 									href="/photos/{subfolder.id}"
 									class="folder-card"
@@ -274,7 +343,7 @@
 					</details>
 				</div>
 			{:else if $photos.data}
-				{#if $photos.data.data.length === 0 && (!$subfolders.data || $subfolders.data.children.length === 0)}
+				{#if $photos.data.data.length === 0 && (!$subfolders.data || $subfolders.data.data.length === 0)}
 					<p class="status-message">No photos or folders in this folder yet</p>
 				{:else if $photos.data.data.length > 0}
 					<div class="photos-section">
@@ -302,12 +371,17 @@
 								</div>
 							{/each}
 						</div>
-						<div class="pagination">
-							<p>
-								Showing {$photos.data.data.length} of {$photos.data.pagination.total} photos (Page {$photos
-									.data.pagination.page})
-							</p>
-						</div>
+
+						<!-- Pagination controls -->
+						{#if $photos.data.pagination.total > perPage}
+							<Pagination
+								currentPage={$photos.data.pagination.page}
+								totalPages={Math.ceil($photos.data.pagination.total / perPage)}
+								totalItems={$photos.data.pagination.total}
+								onPageChange={handlePageChange}
+								itemName="photos"
+							/>
+						{/if}
 					</div>
 				{/if}
 			{/if}
@@ -400,6 +474,10 @@
 		color: var(--color-text);
 	}
 
+	.filters-wrapper {
+		padding: var(--spacing-lg) var(--spacing-lg) 0;
+	}
+
 	.photos-grid {
 		flex: 1;
 		overflow-y: auto;
@@ -462,14 +540,6 @@
 	.photo-size {
 		font-size: 0.8rem;
 		color: var(--color-text-secondary);
-	}
-
-	.pagination {
-		margin-top: var(--spacing-lg);
-		padding: var(--spacing-md);
-		text-align: center;
-		color: var(--color-text-secondary);
-		font-size: 0.9rem;
 	}
 
 	.header-actions {
