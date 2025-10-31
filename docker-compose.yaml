@@ -10,8 +10,12 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+      - playwright-cache:/root/.cache/ms-playwright
     environment:
       - PUBLIC_API_URL=http://localhost:8888
       - DOCKER_ENV=true
     command: npm run dev
     restart: unless-stopped
+
+volumes:
+  playwright-cache:
