@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
-	import { get, writable } from 'svelte/store';
-	import { useQueryClient, createQuery } from '@tanstack/svelte-query';
+	import { writable } from 'svelte/store';
+	import { createInfiniteQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { foldersQuery, folderChildrenQuery, folderPathQuery } from '$lib/api/queries/folders';
 	import { createFolderMutation } from '$lib/api/mutations/createFolder';
 	import UppyUploader from '$lib/components/UppyUploader.svelte';
@@ -10,7 +9,6 @@
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import FolderTree from '$lib/components/FolderTree.svelte';
 	import PhotoFilters from '$lib/components/PhotoFilters.svelte';
-	import Pagination from '$lib/components/Pagination.svelte';
 	import { env } from '$env/dynamic/public';
 	import type { PhotoDto, PhotoQueryParams, ListPhotosResponse } from '$lib/api/types';
 	import { PhotoUrlBuilder } from '$lib/domain/photo/PhotoUrlBuilder';
@@ -20,103 +18,90 @@
 	import { apiClient } from '$lib/api/client';
 	import { buildPhotoQueryString } from '$lib/api/utils/buildQueryString';
 
-	// Simple reactive folder ID
-	$: folderId = $page.params.folderId ?? '';
-	let previousFolderId = folderId;
-
 	// Photo filtering and sorting state
-	let photoParams: PhotoQueryParams = {
+	let photoParams: PhotoQueryParams = $state({
 		sortBy: 'uploadedAt',
 		sortOrder: 'desc'
-	};
+	});
 
-	// Read current page from URL, default to 1
-	$: currentPage = parseInt($page.url.searchParams.get('page') || '1', 10);
 	const perPage = 50;
 
-	// Create a stringified version of params for reactivity
-	$: paramsKey = JSON.stringify(photoParams);
+	// Intersection Observer for infinite scroll
+	let loadMoreTrigger = $state<HTMLDivElement>();
 
-	// Reset page when folder changes
-	$: if (folderId !== previousFolderId) {
-		previousFolderId = folderId;
-		// Clear page param when changing folders
-		if (currentPage !== 1) {
-			const url = new URL(get(page).url);
-			url.searchParams.delete('page');
-			goto(url.toString(), { replaceState: true, noScroll: true });
-		}
-	}
-
-	// Handle filter changes
+	// Handle filter changes - reset infinite query
 	function handleParamsChange(newParams: PhotoQueryParams) {
 		photoParams = { ...newParams }; // Create new object reference
-		// Reset to page 1 when filters change
-		if (currentPage !== 1) {
-			const url = new URL(get(page).url);
-			url.searchParams.delete('page');
-			goto(url.toString(), { replaceState: true, noScroll: true });
-		}
 	}
 
-	const queryClient = useQueryClient();
-
-	// Handle page changes - update URL to trigger reactivity
-	function handlePageChange(pageNumber: number) {
-		// Update URL with new page number
-		const url = new URL(get(page).url);
-		if (pageNumber === 1) {
-			url.searchParams.delete('page');
-		} else {
-			url.searchParams.set('page', pageNumber.toString());
-		}
-
-		// Navigate to new URL (this will trigger currentPage reactivity)
-		goto(url.toString(), { noScroll: false });
-
-		// Invalidate the photos query to force a refetch with new page
-		queryClient.invalidateQueries({
-			queryKey: ['photos', folderId]
-		});
-
-		// Scroll to top
-		setTimeout(() => {
-			const photosSection = document.querySelector('.photos-section');
-			if (photosSection) {
-				photosSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-			}
-		}, 100);
-	}
-
-	// Calculate applied filters count
-	$: appliedFiltersCount =
+	// Derived reactive values
+	const folderId = $derived($page.params.folderId ?? '');
+	const paramsKey = $derived(JSON.stringify(photoParams));
+	const appliedFiltersCount = $derived(
 		(photoParams.search ? 1 : 0) +
-		(photoParams.mimeType ? 1 : 0) +
-		(photoParams.extension ? 1 : 0) +
-		(photoParams.sizeMin !== undefined ? 1 : 0) +
-		(photoParams.sizeMax !== undefined ? 1 : 0) +
-		(photoParams.dateFrom ? 1 : 0) +
-		(photoParams.dateTo ? 1 : 0);
+			(photoParams.mimeType ? 1 : 0) +
+			(photoParams.extension ? 1 : 0) +
+			(photoParams.sizeMin !== undefined ? 1 : 0) +
+			(photoParams.sizeMax !== undefined ? 1 : 0) +
+			(photoParams.dateFrom ? 1 : 0) +
+			(photoParams.dateTo ? 1 : 0)
+	);
+
+	// Query client for cache invalidation
+	const queryClient = useQueryClient();
 
 	// Create queries using helper functions
 	const folders = foldersQuery({}, 1, 1000);
-	$: subfolders = folderChildrenQuery(folderId, {}, 1, 1000);
-	$: folderPath = folderPathQuery(folderId);
+	const subfolders = $derived(folderChildrenQuery(folderId, {}, 1, 1000));
+	const folderPath = $derived(folderPathQuery(folderId));
 
-	// Photos query - use paramsKey to trigger reactivity when params object changes
-	$: photos = createQuery({
-		queryKey: ['photos', folderId, currentPage, perPage, paramsKey],
-		queryFn: async () => {
-			const queryString = buildPhotoQueryString({
-				...photoParams,
-				page: currentPage,
-				perPage
-			});
-			return apiClient.get<ListPhotosResponse>(`/api/folders/${folderId}/photos${queryString}`);
-		},
-		enabled: !!folderId,
-		staleTime: 60_000,
-		retry: 1
+	// Photos infinite query for infinite scroll
+	const photos = $derived(
+		createInfiniteQuery({
+			queryKey: ['photos-infinite', folderId, paramsKey],
+			queryFn: async ({ pageParam = 1 }) => {
+				const queryString = buildPhotoQueryString({
+					...photoParams,
+					page: pageParam,
+					perPage
+				});
+				return apiClient.get<ListPhotosResponse>(`/api/folders/${folderId}/photos${queryString}`);
+			},
+			enabled: !!folderId,
+			getNextPageParam: (lastPage, allPages) => {
+				const currentPage = allPages.length;
+				const totalPages = Math.ceil(lastPage.pagination.total / perPage);
+				return currentPage < totalPages ? currentPage + 1 : undefined;
+			},
+			initialPageParam: 1,
+			staleTime: 60_000,
+			retry: 1
+		})
+	);
+
+	// Flatten all photos from all pages
+	const allPhotos = $derived($photos.data?.pages.flatMap((page) => page.data) ?? []);
+	const totalPhotos = $derived($photos.data?.pages[0]?.pagination.total ?? 0);
+
+	// Setup Intersection Observer for infinite scroll
+	$effect(() => {
+		if (!loadMoreTrigger) return;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				const [entry] = entries;
+				if (entry.isIntersecting && $photos.hasNextPage && !$photos.isFetchingNextPage) {
+					$photos.fetchNextPage();
+				}
+			},
+			{ rootMargin: '200px' } // Start loading 200px before reaching the trigger
+		);
+
+		observer.observe(loadMoreTrigger);
+
+		return () => {
+			observer.disconnect();
+		};
 	});
 
 	const createFolder = createFolderMutation();
@@ -126,10 +111,10 @@
 	const photoUrlBuilder = new PhotoUrlBuilder(apiBaseUrl);
 
 	// Build upload endpoint using domain service
-	$: uploadEndpoint = UploadConfiguration.buildUploadEndpoint(apiBaseUrl, folderId);
+	const uploadEndpoint = $derived(UploadConfiguration.buildUploadEndpoint(apiBaseUrl, folderId));
 
-	let showUploader = false;
-	let selectedPhoto: PhotoDto | null = null;
+	let showUploader = $state(false);
+	let selectedPhoto = $state<PhotoDto | null>(null);
 
 	// Store for tracking which folders are expanded in the sidebar tree
 	const expandedFolders = writable<Set<string>>(new Set());
@@ -157,12 +142,14 @@
 	}
 
 	// Auto-expand parent folders when landing on a subfolder via direct link
-	$: if ($folderPath.data) {
-		// Expand all parent folders in the path
-		$folderPath.data.path.forEach((folder) => {
-			expandFolder(folder.id);
-		});
-	}
+	$effect(() => {
+		if ($folderPath.data) {
+			// Expand all parent folders in the path
+			$folderPath.data.path.forEach((folder) => {
+				expandFolder(folder.id);
+			});
+		}
+	});
 
 	async function handleNewRootFolder() {
 		const name = prompt('Enter folder name:');
@@ -259,7 +246,7 @@
 			<h2>Folders</h2>
 			<button
 				class="btn-new-folder"
-				on:click={handleNewRootFolder}
+				onclick={handleNewRootFolder}
 				disabled={$createFolder.isPending}
 			>
 				{$createFolder.isPending ? 'Creating...' : '+ New Folder'}
@@ -295,13 +282,13 @@
 				{#if folderId}
 					<button
 						class="btn-new-subfolder"
-						on:click={handleNewSubfolder}
+						onclick={handleNewSubfolder}
 						disabled={$createFolder.isPending}
 					>
 						{$createFolder.isPending ? 'Creating...' : '📁 New Subfolder'}
 					</button>
 				{/if}
-				<button class="btn-upload" on:click={() => (showUploader = !showUploader)}>
+				<button class="btn-upload" onclick={() => (showUploader = !showUploader)}>
 					{showUploader ? 'Cancel' : '📤 Upload Photos'}
 				</button>
 			</div>
@@ -312,7 +299,7 @@
 		{/if}
 
 		<!-- Photo filters - only show when there are photos or active filters -->
-		{#if $photos.data && ($photos.data.data.length > 0 || appliedFiltersCount > 0)}
+		{#if $photos.data && (allPhotos.length > 0 || appliedFiltersCount > 0)}
 			<div class="filters-wrapper">
 				<PhotoFilters
 					params={photoParams}
@@ -356,7 +343,7 @@
 								<a
 									href="/photos/{subfolder.id}"
 									class="folder-card"
-									on:click={() => expandFolder(subfolder.id)}
+									onclick={() => expandFolder(subfolder.id)}
 								>
 									<div class="folder-icon">📁</div>
 									<div class="folder-info">
@@ -381,17 +368,20 @@
 					</details>
 				</div>
 			{:else if $photos.data}
-				{#if $photos.data.data.length === 0 && (!$subfolders.data || $subfolders.data.data.length === 0)}
+				{#if allPhotos.length === 0 && (!$subfolders.data || $subfolders.data.data.length === 0)}
 					<p class="status-message">No photos or folders in this folder yet</p>
-				{:else if $photos.data.data.length > 0}
+				{:else if allPhotos.length > 0}
 					<div class="photos-section">
-						<h3>Photos</h3>
+						<div class="photos-header">
+							<h3>Photos</h3>
+							<span class="photos-info">{totalPhotos} photos</span>
+						</div>
 						<div class="grid">
-							{#each $photos.data.data as photo}
+							{#each allPhotos as photo}
 								<div
 									class="photo-card"
-									on:click={() => openLightbox(photo)}
-									on:keydown={(e) => handlePhotoKeydown(e, photo)}
+									onclick={() => openLightbox(photo)}
+									onkeydown={(e) => handlePhotoKeydown(e, photo)}
 									role="button"
 									tabindex="0"
 								>
@@ -410,18 +400,16 @@
 							{/each}
 						</div>
 
-						<!-- Pagination controls -->
-						{#if $photos.data.pagination.total > perPage}
-							{#key currentPage}
-								<Pagination
-									{currentPage}
-									totalPages={Math.ceil($photos.data.pagination.total / perPage)}
-									totalItems={$photos.data.pagination.total}
-									onPageChange={handlePageChange}
-									itemName="photos"
-								/>
-							{/key}
-						{/if}
+						<!-- Infinite scroll trigger and loading indicator -->
+						<div bind:this={loadMoreTrigger} class="load-more-trigger">
+							{#if $photos.isFetchingNextPage}
+								<p class="loading-more">Loading more photos...</p>
+							{:else if $photos.hasNextPage}
+								<p class="load-more-message">Scroll to load more</p>
+							{:else if totalPhotos > perPage}
+								<p class="all-loaded">All {totalPhotos} photos loaded</p>
+							{/if}
+						</div>
 					</div>
 				{/if}
 			{/if}
@@ -429,8 +417,8 @@
 	</main>
 </div>
 
-{#if selectedPhoto && $photos.data}
-	<Lightbox photo={selectedPhoto} photos={$photos.data.data} {apiBaseUrl} onClose={closeLightbox} />
+{#if selectedPhoto}
+	<Lightbox photo={selectedPhoto} photos={allPhotos} {apiBaseUrl} onClose={closeLightbox} />
 {/if}
 
 <style>
@@ -680,6 +668,57 @@
 		font-size: 1.1rem;
 		color: var(--color-text);
 		font-weight: 600;
+	}
+
+	.photos-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: var(--spacing-md);
+	}
+
+	.photos-info {
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+		font-weight: 500;
+	}
+
+	.load-more-trigger {
+		margin-top: var(--spacing-xl);
+		padding: var(--spacing-lg);
+		text-align: center;
+		min-height: 60px;
+	}
+
+	.loading-more {
+		color: var(--color-text-secondary);
+		font-size: 0.95rem;
+		font-weight: 500;
+		margin: 0;
+		animation: pulse 1.5s ease-in-out infinite;
+	}
+
+	.load-more-message {
+		color: var(--color-text-tertiary);
+		font-size: 0.85rem;
+		margin: 0;
+	}
+
+	.all-loaded {
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+		font-style: italic;
+		margin: 0;
+	}
+
+	@keyframes pulse {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.6;
+		}
 	}
 
 	.folder-card {
