@@ -257,7 +257,8 @@
 			console.error(`❌ ${failed.length} files failed`);
 		}
 		// Refetch photos to refresh the list (refetchQueries ensures infinite query pages are refetched)
-		queryClient.refetchQueries({ queryKey: ['photos-infinite', folderId] });
+		// Using exact: false to refetch all queries for this folder regardless of paramsKey
+		queryClient.refetchQueries({ queryKey: ['photos-infinite', folderId], exact: false });
 		showUploader = false;
 	}
 
