@@ -256,8 +256,8 @@
 		if (failed.length > 0) {
 			console.error(`❌ ${failed.length} files failed`);
 		}
-		// Invalidate photos cache to refresh the list
-		queryClient.invalidateQueries({ queryKey: ['photos', folderId] });
+		// Refetch photos to refresh the list (refetchQueries ensures infinite query pages are refetched)
+		queryClient.refetchQueries({ queryKey: ['photos-infinite', folderId] });
 		showUploader = false;
 	}
 
