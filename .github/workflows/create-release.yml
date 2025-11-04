@@ -1,4 +1,4 @@
-name: Pre-release
+name: Create Release
 
 on:
   workflow_dispatch:
@@ -165,8 +165,52 @@ jobs:
 
             Full E2E test report: [Workflow run](https://github.com/YggdrasilCloud/tests-e2e/actions)
 
+  merge-pr:
+    needs: [create-release]
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.dry_run }}
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge PR if exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get current branch name
+          BRANCH_NAME=$(git branch --show-current)
+          echo "Current branch: $BRANCH_NAME"
+
+          # Find PR for this branch by filtering all open PRs
+          PR_NUMBER=$(gh pr list \
+            --repo ${{ github.repository }} \
+            --state open \
+            --json number,headRefName | \
+            jq -r ".[] | select(.headRefName == \"${BRANCH_NAME}\") | .number")
+
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No open PR found for branch $BRANCH_NAME, skipping merge"
+            exit 0
+          fi
+
+          echo "Found PR #$PR_NUMBER for branch $BRANCH_NAME, merging with rebase..."
+
+          # Merge PR with rebase and merge strategy
+          gh pr merge $PR_NUMBER \
+            --repo ${{ github.repository }} \
+            --rebase \
+            --delete-branch \
+            --body "Auto-merged after successful release ${{ inputs.version }}"
+
+          echo "✅ PR #$PR_NUMBER merged successfully"
+
   post-tag-verification:
-    needs: [create-release, resolve-core-version]
+    needs: [merge-pr, resolve-core-version]
     runs-on: ubuntu-latest
     if: ${{ !inputs.dry_run }}
     steps:
