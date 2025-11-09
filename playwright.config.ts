@@ -11,6 +11,7 @@ export default defineConfig({
 	retries: process.env.CI ? 2 : 0,
 	workers: process.env.CI ? 1 : undefined,
 	reporter: [['html', { outputFolder: 'reports/playwright' }], ['list']],
+	globalSetup: './tests/global-setup.ts',
 	use: {
 		// Use frontend service name when running in Docker, localhost otherwise
 		baseURL: process.env.DOCKER_ENV ? 'http://frontend:5173' : 'http://localhost:5173',
