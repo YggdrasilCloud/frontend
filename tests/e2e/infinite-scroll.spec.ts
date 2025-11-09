@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { navigateToInfiniteScrollTestFolder, navigateToSmallFolder } from './helpers/test-data';
 
 /**
  * E2E tests for infinite scroll functionality
@@ -11,22 +12,13 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('Infinite Scroll', () => {
 	test('should load initial photos on page load', async ({ page }) => {
-		// Navigate to photos page
-		await page.goto('/photos');
-		await page.waitForLoadState('networkidle');
-
-		// Wait for folders to load
+		// Navigate to Infinite Scroll Test folder (60 photos)
 		try {
-			await page.waitForSelector('.folder-card', { timeout: 10000 });
+			await navigateToInfiniteScrollTestFolder(page);
 		} catch {
-			test.skip(true, 'No folders available for testing');
+			test.skip(true, 'Infinite Scroll Test folder not available');
 			return;
 		}
-
-		// Click on first folder
-		const folderCard = page.locator('.folder-card').first();
-		await folderCard.click();
-		await page.waitForLoadState('networkidle');
 
 		// Wait for initial photos to load
 		await page.waitForSelector('.photo-card', { timeout: 10000 });
@@ -44,22 +36,13 @@ test.describe('Infinite Scroll', () => {
 	});
 
 	test('should load more photos when scrolling near bottom', async ({ page }) => {
-		// Navigate to photos page
-		await page.goto('/photos');
-		await page.waitForLoadState('networkidle');
-
-		// Wait for folders to load
+		// Navigate to Infinite Scroll Test folder (60 photos)
 		try {
-			await page.waitForSelector('.folder-card', { timeout: 10000 });
+			await navigateToInfiniteScrollTestFolder(page);
 		} catch {
-			test.skip(true, 'No folders available for testing');
+			test.skip(true, 'Infinite Scroll Test folder not available');
 			return;
 		}
-
-		// Click on first folder
-		const folderCard = page.locator('.folder-card').first();
-		await folderCard.click();
-		await page.waitForLoadState('networkidle');
 
 		// Wait for initial photos to load
 		await page.waitForSelector('.photo-card', { timeout: 10000 });
@@ -67,7 +50,7 @@ test.describe('Infinite Scroll', () => {
 		const initialPhotoCount = await page.locator('.photo-card').count();
 		console.log(`Initial photo count: ${initialPhotoCount}`);
 
-		// Check if there are more than 50 photos (need multiple pages for infinite scroll)
+		// Get total photos (should be 60 from seed data)
 		const totalPhotos = await page
 			.locator('.photos-info')
 			.textContent()
@@ -79,10 +62,7 @@ test.describe('Infinite Scroll', () => {
 
 		console.log(`Total photos in folder: ${totalPhotos}`);
 
-		if (totalPhotos <= 50) {
-			test.skip(true, 'Not enough photos to test infinite scroll (need > 50)');
-			return;
-		}
+		expect(totalPhotos).toBeGreaterThan(50); // Should have 60 photos from seed
 
 		// Scroll the load-more-trigger into view to trigger Intersection Observer
 		const trigger = page.locator('.load-more-trigger');
@@ -111,21 +91,13 @@ test.describe('Infinite Scroll', () => {
 	});
 
 	test('should lazy load images only in viewport', async ({ page }) => {
-		// Navigate to photos page
-		await page.goto('/photos');
-		await page.waitForLoadState('networkidle');
-
-		// Wait for folders and navigate to first folder
+		// Navigate to Infinite Scroll Test folder (60 photos)
 		try {
-			await page.waitForSelector('.folder-card', { timeout: 10000 });
+			await navigateToInfiniteScrollTestFolder(page);
 		} catch {
-			test.skip(true, 'No folders available for testing');
+			test.skip(true, 'Infinite Scroll Test folder not available');
 			return;
 		}
-
-		const folderCard = page.locator('.folder-card').first();
-		await folderCard.click();
-		await page.waitForLoadState('networkidle');
 
 		// Wait for initial photos to load
 		await page.waitForSelector('.photo-card', { timeout: 10000 });
@@ -172,24 +144,17 @@ test.describe('Infinite Scroll', () => {
 	});
 
 	test('should show loading indicator while fetching more photos', async ({ page }) => {
-		// Navigate to photos page
-		await page.goto('/photos');
-		await page.waitForLoadState('networkidle');
-
+		// Navigate to Infinite Scroll Test folder (60 photos)
 		try {
-			await page.waitForSelector('.folder-card', { timeout: 10000 });
+			await navigateToInfiniteScrollTestFolder(page);
 		} catch {
-			test.skip(true, 'No folders available for testing');
+			test.skip(true, 'Infinite Scroll Test folder not available');
 			return;
 		}
 
-		const folderCard = page.locator('.folder-card').first();
-		await folderCard.click();
-		await page.waitForLoadState('networkidle');
-
 		await page.waitForSelector('.photo-card', { timeout: 10000 });
 
-		// Check total photos
+		// Get total photos (should be 60 from seed data)
 		const totalPhotos = await page
 			.locator('.photos-info')
 			.textContent()
@@ -199,10 +164,7 @@ test.describe('Infinite Scroll', () => {
 			})
 			.catch(() => 0);
 
-		if (totalPhotos <= 50) {
-			test.skip(true, 'Not enough photos to test loading indicator');
-			return;
-		}
+		expect(totalPhotos).toBeGreaterThan(50); // Should have 60 photos from seed
 
 		// Scroll the load-more-trigger into view to trigger Intersection Observer
 		const trigger = page.locator('.load-more-trigger');
@@ -236,24 +198,17 @@ test.describe('Infinite Scroll', () => {
 	});
 
 	test('should not load more photos when all photos are loaded', async ({ page }) => {
-		// Navigate to photos page
-		await page.goto('/photos');
-		await page.waitForLoadState('networkidle');
-
+		// Navigate to a small folder (<= 50 photos)
 		try {
-			await page.waitForSelector('.folder-card', { timeout: 10000 });
+			await navigateToSmallFolder(page);
 		} catch {
-			test.skip(true, 'No folders available for testing');
+			test.skip(true, 'No small folder available for testing');
 			return;
 		}
 
-		const folderCard = page.locator('.folder-card').first();
-		await folderCard.click();
-		await page.waitForLoadState('networkidle');
-
 		await page.waitForSelector('.photo-card', { timeout: 10000 });
 
-		// Check total photos
+		// Get total photos (should be ≤ 50)
 		const totalPhotos = await page
 			.locator('.photos-info')
 			.textContent()
@@ -263,10 +218,7 @@ test.describe('Infinite Scroll', () => {
 			})
 			.catch(() => 0);
 
-		if (totalPhotos > 50) {
-			test.skip(true, 'Too many photos, need folder with <= 50 photos for this test');
-			return;
-		}
+		expect(totalPhotos).toBeLessThanOrEqual(50); // Should be a small folder
 
 		// Scroll to bottom
 		await page.evaluate(() => {
