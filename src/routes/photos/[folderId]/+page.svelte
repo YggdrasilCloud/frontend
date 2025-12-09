@@ -155,8 +155,12 @@
 	const apiBaseUrl = env.PUBLIC_API_URL || 'http://localhost:8888';
 	const photoUrlBuilder = new PhotoUrlBuilder(apiBaseUrl);
 
-	// Build upload endpoint using domain service
-	const uploadEndpoint = $derived(UploadConfiguration.buildUploadEndpoint(apiBaseUrl, folderId));
+	// Build Tus upload endpoint and metadata using domain service
+	const tusEndpoint = UploadConfiguration.buildTusEndpoint(apiBaseUrl);
+	const uploadMetadata = $derived(UploadConfiguration.buildUploadMetadata(folderId));
+
+	// Parse max upload size from environment variable
+	const maxUploadSize = UploadConfiguration.parseMaxFileSize(env.PUBLIC_MAX_UPLOAD_SIZE);
 
 	let showUploader = $state(false);
 	let selectedPhoto = $state<PhotoDto | null>(null);
@@ -359,11 +363,10 @@
 			{#if showUploader}
 				<div class="uploader-container">
 					<UppyUploader
-						endpoint={uploadEndpoint}
-						fieldName={UploadConfiguration.UPLOAD_FIELD_NAME}
-						formData={{ ownerId: UploadConfiguration.DEFAULT_OWNER_ID }}
+						endpoint={tusEndpoint}
+						metadata={uploadMetadata}
 						allowedTypes={UploadConfiguration.ALLOWED_MIME_TYPES}
-						maxFileSize={UploadConfiguration.MAX_FILE_SIZE_BYTES}
+						maxFileSize={maxUploadSize}
 						on:complete={handleUploadComplete}
 					/>
 				</div>
