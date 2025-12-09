@@ -217,4 +217,134 @@ test.describe('Upload Auto-Refresh', () => {
 		console.log(`New count: ${newCount}`);
 		expect(newCount).toBe(initialCount + 1);
 	});
+
+	test('should accept video file uploads (MP4)', async ({ page }) => {
+		// Navigate to photos page
+		await page.goto('/photos');
+		await page.waitForLoadState('networkidle');
+
+		try {
+			await page.waitForSelector('.folder-card', { timeout: 10000 });
+		} catch {
+			test.skip(true, 'No folders available');
+			return;
+		}
+
+		// Click first folder
+		await page.locator('.folder-card').first().click();
+		await page.waitForLoadState('networkidle');
+		await page.waitForSelector('.photos-grid', { timeout: 10000 });
+
+		// Get initial count
+		const initialText = await page.locator('.photos-info').textContent();
+		const initialMatch = initialText?.match(/(\d+)\s+photos/);
+		const initialCount = initialMatch ? parseInt(initialMatch[1], 10) : 0;
+
+		console.log(`Initial count: ${initialCount}`);
+
+		// Upload a video
+		await page.locator('button:has-text("Upload Photos")').click();
+		await page.waitForSelector('.uppy-Dashboard', { timeout: 5000 });
+
+		// Minimal MP4 file header (ftyp box)
+		// This is the minimum valid MP4 structure that will be recognized as video/mp4
+		const mp4Header = Buffer.from(
+			'0000001c667479706d703432000000006d7034326d7034316973366d',
+			'hex'
+		);
+
+		await page.locator('.uppy-Dashboard-input').first().setInputFiles({
+			name: 'test-video.mp4',
+			mimeType: 'video/mp4',
+			buffer: mp4Header
+		});
+
+		await page.waitForSelector('.uppy-Dashboard-Item', { timeout: 3000 });
+
+		// Verify the file was accepted (not rejected due to type)
+		const fileItem = page.locator('.uppy-Dashboard-Item');
+		await expect(fileItem).toBeVisible();
+
+		// Check there's no error message about file type
+		const errorMessage = page.locator('.uppy-Dashboard-Item-errorMessage');
+		const hasError = await errorMessage.isVisible().catch(() => false);
+		expect(hasError).toBe(false);
+
+		console.log('✅ MP4 video file accepted by uploader');
+
+		// Start upload
+		await page.locator('.uppy-StatusBar-actionBtn--upload').click();
+
+		// Wait for upload to complete
+		await page.waitForFunction(
+			() => {
+				const dashboard = document.querySelector('.uppy-Dashboard');
+				return !dashboard || getComputedStyle(dashboard).display === 'none';
+			},
+			{ timeout: 20000 }
+		);
+
+		// Wait for count to update
+		await page.waitForTimeout(1000);
+
+		// Verify count increased
+		const newText = await page.locator('.photos-info').textContent();
+		const newMatch = newText?.match(/(\d+)\s+photos/);
+		const newCount = newMatch ? parseInt(newMatch[1], 10) : 0;
+
+		console.log(`New count after video upload: ${newCount}`);
+		expect(newCount).toBe(initialCount + 1);
+
+		console.log('✅ Video uploaded successfully via Tus!');
+	});
+
+	test('should reject unsupported file types', async ({ page }) => {
+		// Navigate to photos page
+		await page.goto('/photos');
+		await page.waitForLoadState('networkidle');
+
+		try {
+			await page.waitForSelector('.folder-card', { timeout: 10000 });
+		} catch {
+			test.skip(true, 'No folders available');
+			return;
+		}
+
+		// Click first folder
+		await page.locator('.folder-card').first().click();
+		await page.waitForLoadState('networkidle');
+		await page.waitForSelector('.photos-grid', { timeout: 10000 });
+
+		// Open uploader
+		await page.locator('button:has-text("Upload Photos")').click();
+		await page.waitForSelector('.uppy-Dashboard', { timeout: 5000 });
+
+		// Try to upload a text file (should be rejected)
+		const textBuffer = Buffer.from('This is a text file', 'utf-8');
+
+		await page.locator('.uppy-Dashboard-input').first().setInputFiles({
+			name: 'test.txt',
+			mimeType: 'text/plain',
+			buffer: textBuffer
+		});
+
+		// Wait a bit for Uppy to process
+		await page.waitForTimeout(500);
+
+		// Either the file is not added, or there's an error message
+		// Uppy should reject text/plain as it's not in allowed types
+		const fileItem = page.locator('.uppy-Dashboard-Item');
+		const fileItemVisible = await fileItem.isVisible().catch(() => false);
+
+		if (fileItemVisible) {
+			// If file was added, it should have an error
+			const errorMessage = page.locator('.uppy-Dashboard-Item-errorMessage');
+			const hasError = await errorMessage.isVisible().catch(() => false);
+			expect(hasError).toBe(true);
+			console.log('✅ Text file was rejected with error message');
+		} else {
+			// File was not added at all (which is also correct behavior)
+			console.log('✅ Text file was not added to uploader');
+		}
+	});
 });
