@@ -29,12 +29,31 @@
 		setSearch('');
 		onParamsChange({
 			sortBy: 'uploadedAt',
-			sortOrder: 'desc'
+			sortOrder: 'desc',
+			search: undefined,
+			mimeType: undefined,
+			extension: undefined,
+			sizeMin: undefined,
+			sizeMax: undefined,
+			dateFrom: undefined,
+			dateTo: undefined
 		});
 	}
 
 	// Show/hide advanced filters
 	let showAdvanced = false;
+
+	// Helper to determine media type selection from mimeType param
+	function getMediaTypeValue(mimeType: string | string[] | undefined): string {
+		if (!mimeType) return '';
+		if (Array.isArray(mimeType)) {
+			const hasImages = mimeType.some((m) => m.startsWith('image/'));
+			const hasVideos = mimeType.some((m) => m.startsWith('video/'));
+			if (hasImages && !hasVideos) return 'images';
+			if (hasVideos && !hasImages) return 'videos';
+		}
+		return '';
+	}
 </script>
 
 <div class="filters-container">
@@ -102,23 +121,86 @@
 	{#if showAdvanced}
 		<div class="advanced-filters">
 			<div class="filter-grid">
-				<!-- MIME type filter -->
+				<!-- Media type filter (simplified image/video) -->
 				<div class="filter-group">
-					<label for="mime-filter">Type:</label>
+					<label for="media-type-filter">Media type:</label>
+					<select
+						id="media-type-filter"
+						value={getMediaTypeValue(params.mimeType)}
+						on:change={(e) => {
+							const value = e.currentTarget.value;
+							let mimeType: string | string[] | undefined;
+							if (value === 'images') {
+								mimeType = [
+									'image/jpeg',
+									'image/png',
+									'image/gif',
+									'image/webp',
+									'image/heic',
+									'image/heif'
+								];
+							} else if (value === 'videos') {
+								mimeType = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo'];
+							} else {
+								mimeType = undefined;
+							}
+							onParamsChange({ ...params, mimeType });
+						}}
+					>
+						<option value="">All media</option>
+						<option value="images">Images only</option>
+						<option value="videos">Videos only</option>
+					</select>
+				</div>
+
+				<!-- Format/MIME type filter (specific) -->
+				<div class="filter-group">
+					<label for="mime-filter">Format:</label>
 					<select
 						id="mime-filter"
-						value={params.mimeType || ''}
+						value={typeof params.mimeType === 'string' ? params.mimeType : ''}
 						on:change={(e) => {
 							const value = e.currentTarget.value;
 							onParamsChange({ ...params, mimeType: value || undefined });
 						}}
 					>
-						<option value="">All types</option>
-						<option value="image/jpeg">JPEG</option>
-						<option value="image/png">PNG</option>
-						<option value="image/gif">GIF</option>
-						<option value="image/webp">WebP</option>
+						<option value="">All formats</option>
+						<optgroup label="Images">
+							<option value="image/jpeg">JPEG</option>
+							<option value="image/png">PNG</option>
+							<option value="image/gif">GIF</option>
+							<option value="image/webp">WebP</option>
+							<option value="image/heic">HEIC</option>
+						</optgroup>
+						<optgroup label="Videos">
+							<option value="video/mp4">MP4</option>
+							<option value="video/quicktime">MOV</option>
+							<option value="video/webm">WebM</option>
+						</optgroup>
 					</select>
+				</div>
+
+				<!-- Extension filter -->
+				<div class="filter-group">
+					<label for="extension-filter">Extension:</label>
+					<input
+						id="extension-filter"
+						type="text"
+						placeholder="jpg, png, mp4..."
+						value={Array.isArray(params.extension)
+							? params.extension.join(', ')
+							: params.extension || ''}
+						on:input={(e) => {
+							const value = e.currentTarget.value.trim();
+							const extensions = value
+								? value
+										.split(',')
+										.map((ext) => ext.trim().toLowerCase())
+										.filter(Boolean)
+								: undefined;
+							onParamsChange({ ...params, extension: extensions });
+						}}
+					/>
 				</div>
 
 				<!-- Size range -->
@@ -152,6 +234,35 @@
 							const value = e.currentTarget.value;
 							const bytes = value ? Math.round(parseFloat(value) * 1024 * 1024) : undefined;
 							onParamsChange({ ...params, sizeMax: bytes });
+						}}
+					/>
+				</div>
+
+				<!-- Date range -->
+				<div class="filter-group">
+					<label for="date-from">From date:</label>
+					<input
+						id="date-from"
+						type="date"
+						value={params.dateFrom ? params.dateFrom.split('T')[0] : ''}
+						on:input={(e) => {
+							const value = e.currentTarget.value;
+							const isoDate = value ? `${value}T00:00:00Z` : undefined;
+							onParamsChange({ ...params, dateFrom: isoDate });
+						}}
+					/>
+				</div>
+
+				<div class="filter-group">
+					<label for="date-to">To date:</label>
+					<input
+						id="date-to"
+						type="date"
+						value={params.dateTo ? params.dateTo.split('T')[0] : ''}
+						on:input={(e) => {
+							const value = e.currentTarget.value;
+							const isoDate = value ? `${value}T23:59:59Z` : undefined;
+							onParamsChange({ ...params, dateTo: isoDate });
 						}}
 					/>
 				</div>
