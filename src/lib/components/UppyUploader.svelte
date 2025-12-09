@@ -2,22 +2,20 @@
 	import { onMount, onDestroy, createEventDispatcher } from 'svelte';
 	import Uppy from '@uppy/core';
 	import Dashboard from '@uppy/dashboard';
-	import XHRUpload from '@uppy/xhr-upload';
+	import Tus from '@uppy/tus';
 
-	import '@uppy/core/dist/style.min.css';
-	import '@uppy/dashboard/dist/style.min.css';
+	import '@uppy/core/css/style.min.css';
+	import '@uppy/dashboard/css/style.min.css';
 
 	export let endpoint: string;
 	export let allowedTypes: readonly string[] | string[] = ['image/*'];
-	export let maxFileSize: number = 20971520; // 20MB
+	export let maxFileSize: number = 5368709120; // 5GB default for Tus
 	export let maxNumberOfFiles: number = 100;
-	export let fieldName: string = 'file'; // Field name for the file in the POST request
-	export let formData: Record<string, string> = {}; // Additional form data to send with the upload
-
-	import type { UppyFile, Meta, Body } from '@uppy/core';
+	export let chunkSize: number = 50 * 1024 * 1024; // 50MB chunks
+	export let metadata: Record<string, string> = {}; // Metadata sent with Tus upload
 
 	const dispatch = createEventDispatcher<{
-		complete: { successful: UppyFile<Meta, Body>[]; failed: UppyFile<Meta, Body>[] };
+		complete: { successful: unknown[]; failed: unknown[] };
 		progress: { progress: number };
 		error: { error: Error };
 	}>();
@@ -38,21 +36,18 @@
 				inline: true,
 				target: uppyContainer,
 				height: 400,
-				showProgressDetails: true,
+				hideProgressDetails: false,
 				proudlyDisplayPoweredByUppy: false
 			})
-			.use(XHRUpload, {
+			.use(Tus, {
 				endpoint,
-				fieldName,
-				formData: true,
-				bundle: false, // One request per file
-				allowedMetaFields: Object.keys(formData)
+				chunkSize,
+				retryDelays: [0, 1000, 3000, 5000], // Retry delays for resumable uploads
+				removeFingerprintOnSuccess: true // Clean up fingerprint after successful upload
 			});
 
-		// Set meta data for additional form fields
-		Object.entries(formData).forEach(([key, value]) => {
-			uppy?.setMeta({ [key]: value });
-		});
+		// Set metadata for Tus uploads (folderId, ownerId, etc.)
+		uppy.setMeta(metadata);
 
 		// Forward Uppy events to Svelte
 		uppy.on('complete', (result) => {
