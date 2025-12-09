@@ -3,8 +3,8 @@ import { UploadConfiguration } from './UploadConfiguration';
 
 describe('UploadConfiguration', () => {
 	describe('constants', () => {
-		it('should have correct MAX_FILE_SIZE_BYTES (20 MB)', () => {
-			expect(UploadConfiguration.MAX_FILE_SIZE_BYTES).toBe(20 * 1024 * 1024);
+		it('should have correct DEFAULT_MAX_FILE_SIZE_BYTES (100 GB)', () => {
+			expect(UploadConfiguration.DEFAULT_MAX_FILE_SIZE_BYTES).toBe(100 * 1024 * 1024 * 1024);
 		});
 
 		it('should have correct MAX_NUMBER_OF_FILES', () => {
@@ -13,15 +13,18 @@ describe('UploadConfiguration', () => {
 
 		it('should have correct ALLOWED_MIME_TYPES', () => {
 			expect(UploadConfiguration.ALLOWED_MIME_TYPES).toEqual([
+				// Images
 				'image/jpeg',
 				'image/png',
 				'image/gif',
-				'image/webp'
+				'image/webp',
+				// Vidéos
+				'video/mp4',
+				'video/webm',
+				'video/quicktime',
+				'video/x-msvideo',
+				'video/x-matroska'
 			]);
-		});
-
-		it('should have correct UPLOAD_FIELD_NAME', () => {
-			expect(UploadConfiguration.UPLOAD_FIELD_NAME).toBe('photo');
 		});
 
 		it('should have correct DEFAULT_OWNER_ID', () => {
@@ -29,33 +32,86 @@ describe('UploadConfiguration', () => {
 		});
 	});
 
-	describe('buildUploadEndpoint', () => {
-		it('should build correct endpoint URL', () => {
-			const apiBaseUrl = 'http://localhost:8000';
-			const folderId = '123e4567-e89b-12d3-a456-426614174000';
-			const result = UploadConfiguration.buildUploadEndpoint(apiBaseUrl, folderId);
+	describe('parseMaxFileSize', () => {
+		it('should return default when env value is undefined', () => {
+			const result = UploadConfiguration.parseMaxFileSize(undefined);
 
-			expect(result).toBe(
-				'http://localhost:8000/api/folders/123e4567-e89b-12d3-a456-426614174000/photos'
-			);
+			expect(result).toBe(UploadConfiguration.DEFAULT_MAX_FILE_SIZE_BYTES);
+		});
+
+		it('should return default when env value is empty string', () => {
+			const result = UploadConfiguration.parseMaxFileSize('');
+
+			expect(result).toBe(UploadConfiguration.DEFAULT_MAX_FILE_SIZE_BYTES);
+		});
+
+		it('should parse valid numeric string', () => {
+			const result = UploadConfiguration.parseMaxFileSize('107374182400');
+
+			expect(result).toBe(107374182400); // 100 GB
+		});
+
+		it('should return default when env value is not a number', () => {
+			const result = UploadConfiguration.parseMaxFileSize('invalid');
+
+			expect(result).toBe(UploadConfiguration.DEFAULT_MAX_FILE_SIZE_BYTES);
+		});
+
+		it('should return default when env value is zero', () => {
+			const result = UploadConfiguration.parseMaxFileSize('0');
+
+			expect(result).toBe(UploadConfiguration.DEFAULT_MAX_FILE_SIZE_BYTES);
+		});
+
+		it('should return default when env value is negative', () => {
+			const result = UploadConfiguration.parseMaxFileSize('-1');
+
+			expect(result).toBe(UploadConfiguration.DEFAULT_MAX_FILE_SIZE_BYTES);
+		});
+
+		it('should parse small values', () => {
+			const result = UploadConfiguration.parseMaxFileSize('1048576'); // 1 MB
+
+			expect(result).toBe(1048576);
+		});
+	});
+
+	describe('buildTusEndpoint', () => {
+		it('should build correct Tus endpoint URL', () => {
+			const apiBaseUrl = 'http://localhost:8000';
+			const result = UploadConfiguration.buildTusEndpoint(apiBaseUrl);
+
+			expect(result).toBe('http://localhost:8000/api/uploads/tus');
 		});
 
 		it('should handle production URL', () => {
 			const apiBaseUrl = 'https://api.yggdrasil.cloud';
-			const folderId = '123e4567-e89b-12d3-a456-426614174000';
-			const result = UploadConfiguration.buildUploadEndpoint(apiBaseUrl, folderId);
+			const result = UploadConfiguration.buildTusEndpoint(apiBaseUrl);
 
-			expect(result).toBe(
-				'https://api.yggdrasil.cloud/api/folders/123e4567-e89b-12d3-a456-426614174000/photos'
-			);
+			expect(result).toBe('https://api.yggdrasil.cloud/api/uploads/tus');
+		});
+	});
+
+	describe('buildUploadMetadata', () => {
+		it('should build metadata with folderId and default ownerId', () => {
+			const folderId = '123e4567-e89b-12d3-a456-426614174000';
+			const result = UploadConfiguration.buildUploadMetadata(folderId);
+
+			expect(result).toEqual({
+				folderId: '123e4567-e89b-12d3-a456-426614174000',
+				ownerId: '00000000-0000-0000-0000-000000000000'
+			});
 		});
 
-		it('should handle different folder IDs', () => {
-			const apiBaseUrl = 'http://localhost:8000';
-			const folderId = 'abc-123';
-			const result = UploadConfiguration.buildUploadEndpoint(apiBaseUrl, folderId);
+		it('should build metadata with custom ownerId', () => {
+			const folderId = '123e4567-e89b-12d3-a456-426614174000';
+			const ownerId = 'abc12345-e89b-12d3-a456-426614174000';
+			const result = UploadConfiguration.buildUploadMetadata(folderId, ownerId);
 
-			expect(result).toBe('http://localhost:8000/api/folders/abc-123/photos');
+			expect(result).toEqual({
+				folderId: '123e4567-e89b-12d3-a456-426614174000',
+				ownerId: 'abc12345-e89b-12d3-a456-426614174000'
+			});
 		});
 	});
 
@@ -94,15 +150,43 @@ describe('UploadConfiguration', () => {
 				expect(result.isValid).toBe(true);
 			});
 
-			it('should accept file at max size (20 MB)', () => {
-				const file = createFile('image/jpeg', 20 * 1024 * 1024);
+			it('should accept very small file (1 KB)', () => {
+				const file = createFile('image/jpeg', 1024);
 				const result = UploadConfiguration.validateFile(file);
 
 				expect(result.isValid).toBe(true);
 			});
 
-			it('should accept very small file (1 KB)', () => {
-				const file = createFile('image/jpeg', 1024);
+			it('should accept valid MP4 video', () => {
+				const file = createFile('video/mp4', 10 * 1024 * 1024); // 10 MB
+				const result = UploadConfiguration.validateFile(file);
+
+				expect(result.isValid).toBe(true);
+			});
+
+			it('should accept valid WebM video', () => {
+				const file = createFile('video/webm', 5 * 1024 * 1024); // 5 MB
+				const result = UploadConfiguration.validateFile(file);
+
+				expect(result.isValid).toBe(true);
+			});
+
+			it('should accept valid MOV video', () => {
+				const file = createFile('video/quicktime', 8 * 1024 * 1024); // 8 MB
+				const result = UploadConfiguration.validateFile(file);
+
+				expect(result.isValid).toBe(true);
+			});
+
+			it('should accept valid AVI video', () => {
+				const file = createFile('video/x-msvideo', 6 * 1024 * 1024); // 6 MB
+				const result = UploadConfiguration.validateFile(file);
+
+				expect(result.isValid).toBe(true);
+			});
+
+			it('should accept valid MKV video', () => {
+				const file = createFile('video/x-matroska', 12 * 1024 * 1024); // 12 MB
 				const result = UploadConfiguration.validateFile(file);
 
 				expect(result.isValid).toBe(true);
@@ -141,32 +225,16 @@ describe('UploadConfiguration', () => {
 				expect(result.isValid).toBe(false);
 			});
 
-			it('should reject video file', () => {
-				const file = createFile('video/mp4', 5 * 1024 * 1024);
+			it('should reject unsupported video format', () => {
+				const file = createFile('video/3gpp', 5 * 1024 * 1024);
 				const result = UploadConfiguration.validateFile(file);
 
 				expect(result.isValid).toBe(false);
+				expect(result.error).toContain('not allowed');
 			});
 		});
 
 		describe('invalid file sizes', () => {
-			it('should reject file exceeding max size', () => {
-				const file = createFile('image/jpeg', 21 * 1024 * 1024); // 21 MB
-				const result = UploadConfiguration.validateFile(file);
-
-				expect(result.isValid).toBe(false);
-				expect(result.error).toContain('exceeds maximum');
-				expect(result.error).toContain('21.00 MB');
-			});
-
-			it('should reject very large file', () => {
-				const file = createFile('image/jpeg', 100 * 1024 * 1024); // 100 MB
-				const result = UploadConfiguration.validateFile(file);
-
-				expect(result.isValid).toBe(false);
-				expect(result.error).toContain('100.00 MB');
-			}, 10000); // 10s timeout for large file creation
-
 			it('should reject empty file', () => {
 				const file = createFile('image/jpeg', 0);
 				const result = UploadConfiguration.validateFile(file);
@@ -174,14 +242,51 @@ describe('UploadConfiguration', () => {
 				expect(result.isValid).toBe(false);
 				expect(result.error).toBe('File is empty');
 			});
+
+			it('should reject file exceeding custom max size', () => {
+				const file = createFile('image/jpeg', 30 * 1024 * 1024); // 30 MB
+				const customMaxSize = 20 * 1024 * 1024; // 20 MB
+				const result = UploadConfiguration.validateFile(file, customMaxSize);
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toContain('exceeds maximum');
+				expect(result.error).toContain('30 MB');
+				expect(result.error).toContain('20 MB');
+			});
+
+			it('should accept file within custom max size', () => {
+				const file = createFile('image/jpeg', 15 * 1024 * 1024); // 15 MB
+				const customMaxSize = 20 * 1024 * 1024; // 20 MB
+				const result = UploadConfiguration.validateFile(file, customMaxSize);
+
+				expect(result.isValid).toBe(true);
+			});
 		});
 	});
 
-	describe('getMaxFileSizeFormatted', () => {
-		it('should return formatted max file size', () => {
-			const result = UploadConfiguration.getMaxFileSizeFormatted();
+	describe('formatFileSize', () => {
+		it('should format bytes as MB', () => {
+			expect(UploadConfiguration.formatFileSize(20 * 1024 * 1024)).toBe('20 MB');
+		});
 
-			expect(result).toBe('20 MB');
+		it('should format bytes as GB for large files', () => {
+			expect(UploadConfiguration.formatFileSize(5 * 1024 * 1024 * 1024)).toBe('5.0 GB');
+		});
+
+		it('should format bytes with decimals for GB', () => {
+			expect(UploadConfiguration.formatFileSize(1.5 * 1024 * 1024 * 1024)).toBe('1.5 GB');
+		});
+
+		it('should format 100 GB correctly', () => {
+			expect(UploadConfiguration.formatFileSize(100 * 1024 * 1024 * 1024)).toBe('100.0 GB');
+		});
+	});
+
+	describe('getDefaultMaxFileSizeFormatted', () => {
+		it('should return formatted default max file size (100 GB)', () => {
+			const result = UploadConfiguration.getDefaultMaxFileSizeFormatted();
+
+			expect(result).toBe('100.0 GB');
 		});
 	});
 });
