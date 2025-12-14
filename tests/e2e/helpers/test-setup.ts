@@ -238,6 +238,20 @@ export async function navigateToAnyFolder(page: Page): Promise<string | null> {
  * Create a new folder (for tests that need to test folder creation)
  */
 export async function createFolder(page: Page, folderName: string): Promise<string | null> {
+	// Navigate to /photos if not already there
+	const currentUrl = page.url();
+	if (!currentUrl.includes('/photos')) {
+		await page.goto('/photos');
+	}
+	await page.waitForLoadState('networkidle');
+
+	// Wait for the page to be ready
+	try {
+		await page.waitForSelector('.folder-card, .btn-upload, button', { timeout: 10000 });
+	} catch {
+		// Page might be empty, that's OK
+	}
+
 	// Set up dialog handler
 	page.once('dialog', async (dialog) => {
 		if (dialog.type() === 'prompt') {
@@ -249,6 +263,7 @@ export async function createFolder(page: Page, folderName: string): Promise<stri
 
 	// Click "New Folder" button
 	const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
+	await newFolderButton.waitFor({ state: 'visible', timeout: 10000 });
 	await newFolderButton.click();
 
 	// Wait for the folder to appear

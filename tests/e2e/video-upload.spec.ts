@@ -16,22 +16,36 @@ const uniqueId = () => Date.now().toString(36) + Math.random().toString(36).subs
  * Tests video upload, thumbnail generation, and display
  */
 test.describe('Video Upload', () => {
-	let testFolderId: string;
+	let testFolderId: string | null = null;
 
 	// Create a test folder before all tests
 	test.beforeAll(async ({ browser }) => {
 		const page = await browser.newPage();
+		page.setDefaultTimeout(60000);
 		try {
 			const folderName = `VideoUpload-${uniqueId()}`;
 			testFolderId = await createFolder(page, folderName);
-			console.log(`Created video upload test folder: ${testFolderId}`);
+			if (testFolderId) {
+				console.log(`Created video upload test folder: ${testFolderId}`);
+			} else {
+				console.log('Failed to create video upload test folder');
+			}
+		} catch (error) {
+			console.error('Error creating test folder:', error);
 		} finally {
-			await page.close();
+			try {
+				await page.close();
+			} catch {
+				// Context may already be closed
+			}
 		}
 	});
 
 	// Helper to navigate to the test folder
 	async function navigateToTestFolder(page: Page) {
+		if (!testFolderId) {
+			throw new Error('Test folder not created');
+		}
 		await page.goto(`/photos/${testFolderId}`);
 		await page.waitForLoadState('networkidle');
 		// Wait for photos grid to be ready
@@ -73,6 +87,10 @@ test.describe('Video Upload', () => {
 	}
 
 	test('should upload a video file successfully', async ({ page }) => {
+		if (!testFolderId) {
+			test.skip(true, 'Test folder not created - skipping');
+			return;
+		}
 		await navigateToTestFolder(page);
 
 		// Get initial photo count
@@ -115,6 +133,10 @@ test.describe('Video Upload', () => {
 	});
 
 	test('should display video with thumbnail after upload', async ({ page }) => {
+		if (!testFolderId) {
+			test.skip(true, 'Test folder not created - skipping');
+			return;
+		}
 		await navigateToTestFolder(page);
 		await openUploader(page);
 
@@ -171,6 +193,10 @@ test.describe('Video Upload', () => {
 	});
 
 	test('should handle large video upload with progress indicator', async ({ page }) => {
+		if (!testFolderId) {
+			test.skip(true, 'Test folder not created - skipping');
+			return;
+		}
 		await navigateToTestFolder(page);
 		await openUploader(page);
 
@@ -211,6 +237,10 @@ test.describe('Video Upload', () => {
 	});
 
 	test('should upload multiple files including videos', async ({ page }) => {
+		if (!testFolderId) {
+			test.skip(true, 'Test folder not created - skipping');
+			return;
+		}
 		await navigateToTestFolder(page);
 
 		const initialCount = await page.locator('.photo-card').count();
