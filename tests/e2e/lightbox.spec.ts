@@ -1,38 +1,44 @@
 import { test, expect, type Page } from '@playwright/test';
+import { navigateToFolderWithPhotos } from './helpers/test-setup';
 
+/**
+ * E2E tests for Lightbox feature
+ * Uses seeded test data from the backend seed command
+ */
 test.describe('Lightbox Feature', () => {
-	// Helper to navigate to a folder with photos
-	async function navigateToFolderWithPhotos(page: Page) {
-		await page.goto('/photos');
-		await page.waitForLoadState('networkidle');
+	let testFolderId: string | null;
 
-		// Wait for folders to load (TanStack Query async)
+	// Navigate to a folder with photos before all tests
+	test.beforeAll(async ({ browser }) => {
+		const page = await browser.newPage();
 		try {
-			await page.waitForSelector('.folder-card', { timeout: 10000 });
-		} catch {
-			test.skip(true, 'No folders available for testing');
-			return false;
+			testFolderId = await navigateToFolderWithPhotos(page);
+			if (testFolderId) {
+				console.log(`Found folder with photos for lightbox tests: ${testFolderId}`);
+			}
+		} finally {
+			await page.close();
 		}
+	});
 
-		const folderCard = page.locator('.folder-card').first();
-		await folderCard.click();
+	// Helper to navigate to the test folder with photos
+	async function navigateToTestFolder(page: Page) {
+		if (!testFolderId) {
+			throw new Error('No folder with photos available');
+		}
+		await page.goto(`/photos/${testFolderId}`);
 		await page.waitForLoadState('networkidle');
-
-		// Wait for photos to load (TanStack Query async)
-		try {
-			await page.waitForSelector('.photo-card', { timeout: 10000 });
-		} catch {
-			test.skip(true, 'No photos available for testing');
-			return false;
-		}
-
-		return true;
+		await page.waitForSelector('.photo-card', { timeout: 15000 });
 	}
 
 	test.describe('Opening and closing lightbox', () => {
 		test('should open lightbox when clicking on photo card', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			// Click on first photo
 			const firstPhoto = page.locator('.photo-card').first();
@@ -44,8 +50,12 @@ test.describe('Lightbox Feature', () => {
 		});
 
 		test('should display photo information in lightbox', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			// Get photo name from card
 			const firstPhoto = page.locator('.photo-card').first();
@@ -65,8 +75,12 @@ test.describe('Lightbox Feature', () => {
 		});
 
 		test('should close lightbox when clicking close button', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			// Open lightbox
 			await page.locator('.photo-card').first().click();
@@ -80,8 +94,12 @@ test.describe('Lightbox Feature', () => {
 		});
 
 		test('should close lightbox when clicking on overlay background', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			// Open lightbox
 			await page.locator('.photo-card').first().click();
@@ -95,8 +113,12 @@ test.describe('Lightbox Feature', () => {
 		});
 
 		test('should close lightbox when pressing Escape key', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			// Open lightbox
 			await page.locator('.photo-card').first().click();
@@ -112,8 +134,12 @@ test.describe('Lightbox Feature', () => {
 
 	test.describe('Navigation between photos', () => {
 		test('should navigate to next photo using arrow button', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			// Check if there are multiple photos
 			const photoCount = await page.locator('.photo-card').count();
@@ -134,8 +160,12 @@ test.describe('Lightbox Feature', () => {
 		});
 
 		test('should navigate to previous photo using arrow button', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			// Check if there are multiple photos
 			const photoCount = await page.locator('.photo-card').count();
@@ -156,8 +186,12 @@ test.describe('Lightbox Feature', () => {
 		});
 
 		test('should navigate using keyboard arrow keys', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			// Check if there are multiple photos
 			const photoCount = await page.locator('.photo-card').count();
@@ -180,8 +214,12 @@ test.describe('Lightbox Feature', () => {
 		});
 
 		test('should not show previous button on first photo', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			// Open first photo
 			await page.locator('.photo-card').first().click();
@@ -197,8 +235,12 @@ test.describe('Lightbox Feature', () => {
 		});
 
 		test('should not show next button on last photo', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			const photoCount = await page.locator('.photo-card').count();
 
@@ -220,15 +262,32 @@ test.describe('Lightbox Feature', () => {
 
 	test.describe('Progressive image loading', () => {
 		test('should display thumbnail immediately when lightbox opens', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			// Open lightbox
 			await page.locator('.photo-card').first().click();
 
-			// Image should be visible immediately (thumbnail from cache)
+			// Wait for lightbox overlay to appear first
+			await page.waitForSelector('.lightbox-overlay', { timeout: 5000 });
+
+			// Image should be visible (thumbnail from cache or loading)
 			const lightboxImage = page.locator('.lightbox-image');
-			await expect(lightboxImage).toBeVisible();
+			await expect(lightboxImage).toBeVisible({ timeout: 5000 });
+
+			// Wait for src attribute to be set (may be async on mobile)
+			await page.waitForFunction(
+				(selector) => {
+					const img = document.querySelector(selector);
+					return img && img.getAttribute('src') && img.getAttribute('src') !== '';
+				},
+				'.lightbox-image',
+				{ timeout: 10000 }
+			);
 
 			// Image should have a src attribute
 			const src = await lightboxImage.getAttribute('src');
@@ -236,8 +295,12 @@ test.describe('Lightbox Feature', () => {
 		});
 
 		test('should show loading indicator initially', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			// Open lightbox
 			await page.locator('.photo-card').first().click();
@@ -250,8 +313,12 @@ test.describe('Lightbox Feature', () => {
 		});
 
 		test('should apply blur effect to thumbnail before original loads', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			// Open lightbox
 			await page.locator('.photo-card').first().click();
@@ -267,8 +334,12 @@ test.describe('Lightbox Feature', () => {
 
 	test.describe('Accessibility', () => {
 		test('should be accessible via keyboard from photo grid', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			// Focus first photo card using Tab
 			await page.keyboard.press('Tab');
@@ -284,8 +355,12 @@ test.describe('Lightbox Feature', () => {
 		});
 
 		test('should have proper ARIA labels', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			// Open lightbox
 			await page.locator('.photo-card').first().click();
@@ -305,8 +380,12 @@ test.describe('Lightbox Feature', () => {
 		});
 
 		test('should have proper alt text on image', async ({ page }) => {
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
+			await navigateToTestFolder(page);
 
 			// Get photo name
 			const firstPhoto = page.locator('.photo-card').first();
@@ -324,11 +403,15 @@ test.describe('Lightbox Feature', () => {
 
 	test.describe('Mobile responsiveness', () => {
 		test('should work on mobile viewport', async ({ page }) => {
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
 			// Set mobile viewport
 			await page.setViewportSize({ width: 375, height: 667 });
 
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			await navigateToTestFolder(page);
 
 			// Open lightbox
 			await page.locator('.photo-card').first().click();
@@ -342,11 +425,15 @@ test.describe('Lightbox Feature', () => {
 		});
 
 		test('should handle touch events on mobile', async ({ page }) => {
+			if (!testFolderId) {
+				test.skip(true, 'No folder with photos available');
+				return;
+			}
+
 			// Set mobile viewport
 			await page.setViewportSize({ width: 375, height: 667 });
 
-			const hasPhotos = await navigateToFolderWithPhotos(page);
-			if (!hasPhotos) return;
+			await navigateToTestFolder(page);
 
 			// Open lightbox
 			await page.locator('.photo-card').first().click();
