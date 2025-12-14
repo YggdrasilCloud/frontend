@@ -1,6 +1,28 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+import { navigateToDeepHierarchy, createFolder } from './helpers/test-setup';
 
+const uniqueId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+
+/**
+ * E2E tests for Nested Folder Navigation
+ * Uses seeded test data from the backend seed command
+ */
 test.describe('Nested Folder Navigation', () => {
+	let folderIds: string[] | null;
+
+	// Navigate to seeded nested folder structure before all tests
+	test.beforeAll(async ({ browser }) => {
+		const page = await browser.newPage();
+		try {
+			folderIds = await navigateToDeepHierarchy(page);
+			if (folderIds && folderIds.length > 0) {
+				console.log(`Found nested folders: ${folderIds.join(' -> ')}`);
+			}
+		} finally {
+			await page.close();
+		}
+	});
+
 	test.beforeEach(async ({ page }) => {
 		await page.goto('/photos');
 		await page.waitForLoadState('networkidle');
@@ -10,27 +32,24 @@ test.describe('Nested Folder Navigation', () => {
 	});
 
 	test('should create a subfolder inside a parent folder', async ({ page }) => {
-		// First, navigate to a folder (click the first available folder)
-		const firstFolder = page.locator('.folder-item').first();
-		const folderExists = await firstFolder.isVisible().catch(() => false);
-
-		if (!folderExists) {
-			test.skip();
+		if (!folderIds || folderIds.length === 0) {
+			test.skip(true, 'No nested folders available');
 			return;
 		}
 
-		await firstFolder.click();
+		// Navigate to the first folder
+		await page.goto(`/photos/${folderIds[0]}`);
 		await page.waitForLoadState('networkidle');
 
-		// Now we're inside a folder, create a subfolder
-		const subfolderName = `Subfolder ${Date.now()}`;
+		// Create a new subfolder
+		const subfolderName = `Subfolder-${uniqueId()}`;
 		let promptShown = false;
 
-		page.on('dialog', async (dialog) => {
+		page.once('dialog', async (dialog) => {
 			if (dialog.type() === 'prompt') {
 				promptShown = true;
 				await dialog.accept(subfolderName);
-			} else if (dialog.type() === 'alert') {
+			} else {
 				await dialog.accept();
 			}
 		});
@@ -41,26 +60,24 @@ test.describe('Nested Folder Navigation', () => {
 
 		// Wait for the folder to appear in the UI
 		const newFolder = page.locator('.folder-card', { hasText: subfolderName });
-		await newFolder.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+		await newFolder.waitFor({ state: 'visible', timeout: 10000 });
 
-		// Verify prompt was shown
+		// Verify prompt was shown and folder was created
 		expect(promptShown).toBe(true);
+		await expect(newFolder).toBeVisible();
 	});
 
 	test('should display subfolders in the main content area', async ({ page }) => {
-		// Navigate to a folder
-		const firstFolder = page.locator('.folder-item').first();
-		const folderExists = await firstFolder.isVisible().catch(() => false);
-
-		if (!folderExists) {
-			test.skip();
+		if (!folderIds || folderIds.length === 0) {
+			test.skip(true, 'No nested folders available');
 			return;
 		}
 
-		await firstFolder.click();
+		// Navigate to the root folder (has a subfolder)
+		await page.goto(`/photos/${folderIds[0]}`);
 		await page.waitForLoadState('networkidle');
 
-		// Check if there are any subfolders displayed
+		// Check if there are subfolders displayed (at least the one we created)
 		const foldersSection = page.locator('.folders-section');
 		const hasFoldersSection = await foldersSection.isVisible().catch(() => false);
 
@@ -73,32 +90,27 @@ test.describe('Nested Folder Navigation', () => {
 			const folderCards = foldersSection.locator('.folder-card');
 			const folderCount = await folderCards.count();
 			expect(folderCount).toBeGreaterThan(0);
+		} else {
+			// Just verify folder-card elements exist
+			const folderCards = page.locator('.folder-card');
+			const folderCount = await folderCards.count();
+			expect(folderCount).toBeGreaterThan(0);
 		}
 	});
 
 	test('should navigate into a subfolder by clicking it', async ({ page }) => {
-		// Navigate to a folder
-		const firstFolder = page.locator('.folder-item').first();
-		const folderExists = await firstFolder.isVisible().catch(() => false);
-
-		if (!folderExists) {
-			test.skip();
+		if (!folderIds || folderIds.length === 0) {
+			test.skip(true, 'No nested folders available');
 			return;
 		}
 
-		await firstFolder.click();
+		// Navigate to the root folder
+		await page.goto(`/photos/${folderIds[0]}`);
 		await page.waitForLoadState('networkidle');
 
-		// Check if there are subfolders
-		const subfolderCard = page.locator('.folder-card').first();
-		const hasSubfolder = await subfolderCard.isVisible().catch(() => false);
-
-		if (!hasSubfolder) {
-			test.skip();
-			return;
-		}
-
 		// Click the subfolder
+		const subfolderCard = page.locator('.folder-card').first();
+		await expect(subfolderCard).toBeVisible();
 		await subfolderCard.click();
 		await page.waitForLoadState('networkidle');
 
@@ -110,16 +122,13 @@ test.describe('Nested Folder Navigation', () => {
 	});
 
 	test('should display breadcrumb navigation in folder view', async ({ page }) => {
-		// Navigate to a folder
-		const firstFolder = page.locator('.folder-item').first();
-		const folderExists = await firstFolder.isVisible().catch(() => false);
-
-		if (!folderExists) {
-			test.skip();
+		if (!folderIds || folderIds.length === 0) {
+			test.skip(true, 'No nested folders available');
 			return;
 		}
 
-		await firstFolder.click();
+		// Navigate to the root folder
+		await page.goto(`/photos/${folderIds[0]}`);
 		await page.waitForLoadState('networkidle');
 
 		// Wait for breadcrumb to be visible
@@ -138,29 +147,13 @@ test.describe('Nested Folder Navigation', () => {
 	});
 
 	test('should show full path in breadcrumb for nested folders', async ({ page }) => {
-		// Navigate to a folder
-		const firstFolder = page.locator('.folder-item').first();
-		const folderExists = await firstFolder.isVisible().catch(() => false);
-
-		if (!folderExists) {
-			test.skip();
+		if (!folderIds || folderIds.length < 2) {
+			test.skip(true, 'Need at least 2 levels of nested folders');
 			return;
 		}
 
-		await firstFolder.click();
-		await page.waitForLoadState('networkidle');
-
-		// Check if there are subfolders
-		const subfolderCard = page.locator('.folder-card').first();
-		const hasSubfolder = await subfolderCard.isVisible().catch(() => false);
-
-		if (!hasSubfolder) {
-			test.skip();
-			return;
-		}
-
-		// Click into subfolder
-		await subfolderCard.click();
+		// Navigate to the subfolder (2nd level)
+		await page.goto(`/photos/${folderIds[1]}`);
 		await page.waitForLoadState('networkidle');
 
 		// Wait for breadcrumb to update
@@ -181,31 +174,18 @@ test.describe('Nested Folder Navigation', () => {
 	});
 
 	test('should navigate back via breadcrumb links', async ({ page }) => {
-		// Navigate to a folder
-		const firstFolder = page.locator('.folder-item').first();
-		const folderExists = await firstFolder.isVisible().catch(() => false);
-
-		if (!folderExists) {
-			test.skip();
+		if (!folderIds || folderIds.length < 2) {
+			test.skip(true, 'Need at least 2 levels of nested folders');
 			return;
 		}
 
-		// Get the folder URL for later comparison
-		await firstFolder.click();
+		// Navigate to the root folder first
+		await page.goto(`/photos/${folderIds[0]}`);
 		await page.waitForLoadState('networkidle');
 		const parentUrl = page.url();
 
-		// Check if there are subfolders
-		const subfolderCard = page.locator('.folder-card').first();
-		const hasSubfolder = await subfolderCard.isVisible().catch(() => false);
-
-		if (!hasSubfolder) {
-			test.skip();
-			return;
-		}
-
-		// Click into subfolder
-		await subfolderCard.click();
+		// Navigate to subfolder
+		await page.goto(`/photos/${folderIds[1]}`);
 		await page.waitForLoadState('networkidle');
 
 		// Wait for breadcrumb to update
@@ -214,7 +194,7 @@ test.describe('Nested Folder Navigation', () => {
 		const hasBreadcrumb = await breadcrumb.isVisible().catch(() => false);
 
 		if (!hasBreadcrumb) {
-			test.skip();
+			test.skip(true, 'Breadcrumb not visible');
 			return;
 		}
 
@@ -232,16 +212,13 @@ test.describe('Nested Folder Navigation', () => {
 	});
 
 	test('should show folders and photos sections separately', async ({ page }) => {
-		// Navigate to a folder that has both subfolders and photos
-		const firstFolder = page.locator('.folder-item').first();
-		const folderExists = await firstFolder.isVisible().catch(() => false);
-
-		if (!folderExists) {
-			test.skip();
+		if (!folderIds || folderIds.length === 0) {
+			test.skip(true, 'No nested folders available');
 			return;
 		}
 
-		await firstFolder.click();
+		// Navigate to root folder (has both subfolder and photos)
+		await page.goto(`/photos/${folderIds[0]}`);
 		await page.waitForLoadState('networkidle');
 
 		// Wait for content to load
@@ -259,7 +236,7 @@ test.describe('Nested Folder Navigation', () => {
 		const photosSection = page.locator('.photos-section');
 		const hasPhotosSection = await photosSection.isVisible().catch(() => false);
 
-		// At least one section should be present
+		// At least one section should be present (folders exist from our setup)
 		const hasContent = hasFoldersSection || hasPhotosSection;
 		expect(hasContent).toBe(true);
 
@@ -276,19 +253,16 @@ test.describe('Nested Folder Navigation', () => {
 	});
 
 	test('should show folder icon on folder cards', async ({ page }) => {
-		// Navigate to a folder
-		const firstFolder = page.locator('.folder-item').first();
-		const folderExists = await firstFolder.isVisible().catch(() => false);
-
-		if (!folderExists) {
-			test.skip();
+		if (!folderIds || folderIds.length === 0) {
+			test.skip(true, 'No nested folders available');
 			return;
 		}
 
-		await firstFolder.click();
+		// Navigate to root folder
+		await page.goto(`/photos/${folderIds[0]}`);
 		await page.waitForLoadState('networkidle');
 
-		// Check if there are subfolders
+		// Check subfolder card exists
 		const folderCard = page.locator('.folder-card').first();
 		const hasFolder = await folderCard.isVisible().catch(() => false);
 
@@ -304,30 +278,48 @@ test.describe('Nested Folder Navigation', () => {
 	});
 
 	test('should show empty state when folder has no content', async ({ page }) => {
-		// This test documents the empty state behavior
-		// Note: May not always trigger if all folders have content
+		// Create an empty folder for this test
+		await page.goto('/photos');
+		await page.waitForLoadState('networkidle');
 
-		// Navigate to a folder
-		const firstFolder = page.locator('.folder-item').first();
-		const folderExists = await firstFolder.isVisible().catch(() => false);
+		const emptyFolderName = `Empty-${uniqueId()}`;
 
-		if (!folderExists) {
-			test.skip();
-			return;
-		}
+		page.once('dialog', async (dialog) => {
+			if (dialog.type() === 'prompt') {
+				await dialog.accept(emptyFolderName);
+			} else {
+				await dialog.accept();
+			}
+		});
 
-		await firstFolder.click();
+		// Create new folder
+		const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
+		await newFolderButton.click();
+
+		// Wait for folder to appear
+		const newFolder = page.locator('.folder-card', { hasText: emptyFolderName });
+		await newFolder.waitFor({ state: 'visible', timeout: 10000 });
+
+		// Navigate into the empty folder
+		await newFolder.click();
 		await page.waitForLoadState('networkidle');
 
 		// Wait for page content to render
 		await page.locator('h1').waitFor({ state: 'visible', timeout: 5000 });
 
-		// Check if empty state message is shown
-		const emptyMessage = page.locator('text=/no photos or folders/i');
+		// Check if empty state message is shown (or at least no photos/folders)
+		const emptyMessage = page.locator('text=/no photos/i');
 		const hasEmptyMessage = await emptyMessage.isVisible().catch(() => false);
 
-		// This is just documenting the behavior
-		// Test passes whether empty state is shown or not
-		console.log('Empty state shown:', hasEmptyMessage);
+		// Either show empty message or have no content
+		const photoCount = await page.locator('.photo-card').count();
+		const folderCount = await page.locator('.folder-card').count();
+
+		if (hasEmptyMessage) {
+			console.log('Empty state message shown');
+		} else {
+			// If no empty message, folder should be truly empty
+			expect(photoCount + folderCount).toBe(0);
+		}
 	});
 });
