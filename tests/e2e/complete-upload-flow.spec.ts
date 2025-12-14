@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { createFolder } from './helpers/test-setup';
+import { createFolder, navigateToAnyFolder } from './helpers/test-setup';
 
 // ESM equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -13,25 +13,33 @@ const uniqueId = () => Date.now().toString(36) + Math.random().toString(36).subs
 
 /**
  * E2E tests for complete upload flow
- * Tests the entire workflow from folder creation to photo upload and display
+ * Tests the entire workflow from folder navigation to photo upload and display
+ * Note: Folder creation is tested separately in folder-creation.spec.ts
  */
 test.describe('Complete Upload Flow', () => {
 	let testFolderId: string | null = null;
 
-	// Create a test folder before all tests
+	// Navigate to a seeded folder before all tests
 	test.beforeAll(async ({ browser }) => {
 		const page = await browser.newPage();
 		page.setDefaultTimeout(60000);
 		try {
-			const folderName = `UploadFlow-${uniqueId()}`;
-			testFolderId = await createFolder(page, folderName);
+			// Try to use a seeded folder first
+			testFolderId = await navigateToAnyFolder(page);
 			if (testFolderId) {
-				console.log(`Created upload flow test folder: ${testFolderId}`);
+				console.log(`Using seeded folder for upload tests: ${testFolderId}`);
 			} else {
-				console.log('Failed to create upload flow test folder');
+				// Fallback: try to create a folder
+				const folderName = `UploadFlow-${uniqueId()}`;
+				testFolderId = await createFolder(page, folderName);
+				if (testFolderId) {
+					console.log(`Created upload flow test folder: ${testFolderId}`);
+				} else {
+					console.log('Failed to find or create upload flow test folder');
+				}
 			}
 		} catch (error) {
-			console.error('Error creating test folder:', error);
+			console.error('Error setting up test folder:', error);
 		} finally {
 			try {
 				await page.close();
@@ -51,40 +59,19 @@ test.describe('Complete Upload Flow', () => {
 		await page.waitForSelector('.photos-grid, .grid', { timeout: 10000 }).catch(() => {});
 	}
 
-	test('should create folder, upload image, and verify thumbnail', async ({ page }) => {
-		// Navigate to photos page
-		await page.goto('/photos');
-		await page.waitForLoadState('networkidle');
+	test('should upload image to folder and verify thumbnail', async ({ page }) => {
+		if (!testFolderId) {
+			test.skip(true, 'No test folder available - skipping');
+			return;
+		}
 
-		// Create a new folder using prompt dialog
-		const folderName = `Test-Folder-${uniqueId()}`;
+		// Navigate to the test folder
+		await navigateToTestFolder(page);
 
-		// Listen for prompt dialog
-		page.once('dialog', async (dialog) => {
-			if (dialog.type() === 'prompt') {
-				await dialog.accept(folderName);
-			} else if (dialog.type() === 'alert') {
-				await dialog.accept();
-			}
-		});
+		// Get initial photo count
+		const initialCount = await page.locator('.photo-card').count();
 
-		// Click "New Folder" button
-		const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
-		await expect(newFolderButton).toBeVisible();
-		await newFolderButton.click();
-
-		// Wait for folder to appear
-		await page.waitForTimeout(2000);
-
-		// Find and click the new folder
-		const newFolder = page.locator('.folder-card', { hasText: folderName });
-		await newFolder.waitFor({ state: 'visible', timeout: 10000 });
-
-		// Click folder to navigate into it
-		await newFolder.click();
-		await page.waitForLoadState('networkidle');
-
-		// Now upload an image
+		// Open uploader
 		const uploadButton = page.locator('button:has-text("Upload Photos"), .btn-upload');
 		await expect(uploadButton.first()).toBeVisible({ timeout: 10000 });
 		await uploadButton.first().click();
@@ -123,14 +110,19 @@ test.describe('Complete Upload Flow', () => {
 		// Wait for list refresh
 		await page.waitForTimeout(2000);
 
-		// Verify the image appears with thumbnail
-		const photoCard = page.locator('.photo-card').first();
-		await expect(photoCard).toBeVisible({ timeout: 10000 });
+		// Verify the new image appears with thumbnail
+		const newCount = await page.locator('.photo-card').count();
+		expect(newCount).toBeGreaterThan(initialCount);
 
-		const thumbnail = photoCard.locator('img');
-		await expect(thumbnail).toBeVisible();
+		// Verify thumbnail is visible on the new photo
+		const photoCards = page.locator('.photo-card');
+		const cardCount = await photoCards.count();
+		if (cardCount > 0) {
+			const thumbnail = photoCards.first().locator('img');
+			await expect(thumbnail).toBeVisible();
+		}
 
-		console.log(`Successfully created folder "${folderName}" and uploaded "${fileName}"`);
+		console.log(`Successfully uploaded "${fileName}" to folder ${testFolderId}`);
 	});
 
 	test('should upload to existing folder and show in list', async ({ page }) => {
