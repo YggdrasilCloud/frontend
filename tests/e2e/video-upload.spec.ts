@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { createFolder } from './helpers/test-setup';
+import { createFolder, navigateToAnyFolder } from './helpers/test-setup';
 
 // ESM equivalent of __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -18,20 +18,27 @@ const uniqueId = () => Date.now().toString(36) + Math.random().toString(36).subs
 test.describe('Video Upload', () => {
 	let testFolderId: string | null = null;
 
-	// Create a test folder before all tests
+	// Navigate to a seeded folder before all tests
 	test.beforeAll(async ({ browser }) => {
 		const page = await browser.newPage();
 		page.setDefaultTimeout(60000);
 		try {
-			const folderName = `VideoUpload-${uniqueId()}`;
-			testFolderId = await createFolder(page, folderName);
+			// Try to use a seeded folder first
+			testFolderId = await navigateToAnyFolder(page);
 			if (testFolderId) {
-				console.log(`Created video upload test folder: ${testFolderId}`);
+				console.log(`Using seeded folder for video upload tests: ${testFolderId}`);
 			} else {
-				console.log('Failed to create video upload test folder');
+				// Fallback: try to create a folder
+				const folderName = `VideoUpload-${uniqueId()}`;
+				testFolderId = await createFolder(page, folderName);
+				if (testFolderId) {
+					console.log(`Created video upload test folder: ${testFolderId}`);
+				} else {
+					console.log('Failed to find or create video upload test folder');
+				}
 			}
 		} catch (error) {
-			console.error('Error creating test folder:', error);
+			console.error('Error setting up test folder:', error);
 		} finally {
 			try {
 				await page.close();
