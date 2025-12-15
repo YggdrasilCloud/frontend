@@ -44,11 +44,14 @@ test.describe('Complete Upload Flow', () => {
 			'base64'
 		);
 
-		await page.locator('.uppy-Dashboard-input').first().setInputFiles({
-			name: `upload-test-${uniqueId()}.png`,
-			mimeType: 'image/png',
-			buffer: imageBuffer
-		});
+		await page
+			.locator('.uppy-Dashboard-input')
+			.first()
+			.setInputFiles({
+				name: `upload-test-${uniqueId()}.png`,
+				mimeType: 'image/png',
+				buffer: imageBuffer
+			});
 
 		await page.waitForSelector('.uppy-Dashboard-Item', { timeout: 3000 });
 		await page.locator('.uppy-StatusBar-actionBtn--upload').click();
@@ -143,11 +146,14 @@ test.describe('Complete Upload Flow', () => {
 		const pngHeader = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 		pngHeader.copy(largeBuffer);
 
-		await page.locator('.uppy-Dashboard-input').first().setInputFiles({
-			name: `large-file-${uniqueId()}.png`,
-			mimeType: 'image/png',
-			buffer: largeBuffer
-		});
+		await page
+			.locator('.uppy-Dashboard-input')
+			.first()
+			.setInputFiles({
+				name: `large-file-${uniqueId()}.png`,
+				mimeType: 'image/png',
+				buffer: largeBuffer
+			});
 
 		await page.waitForSelector('.uppy-Dashboard-Item', { timeout: 3000 });
 
