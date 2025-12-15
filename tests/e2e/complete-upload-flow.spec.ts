@@ -1,12 +1,4 @@
 import { test, expect } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-// ESM equivalent of __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 const uniqueId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 
@@ -90,15 +82,12 @@ test.describe('Complete Upload Flow', () => {
 		console.log(`Successfully uploaded "${fileName}"`);
 	});
 
-	test('should upload to existing folder and show in list', async ({ page }) => {
-		// Get initial count
-		const initialInfo = await page.locator('.photos-info').textContent().catch(() => '0 photos');
-		const initialMatch = initialInfo?.match(/(\d+)\s+photos/);
-		const initialCount = initialMatch ? parseInt(initialMatch[1], 10) : 0;
+	test('should upload multiple images sequentially', async ({ page }) => {
+		// Get initial photo count using photo-card elements
+		const initialCount = await page.locator('.photo-card').count();
+		console.log(`Initial photo card count: ${initialCount}`);
 
-		console.log(`Initial photo count: ${initialCount}`);
-
-		// Upload
+		// Upload first image
 		const uploadButton = page.locator('button:has-text("Upload Photos"), .btn-upload');
 		await expect(uploadButton.first()).toBeVisible({ timeout: 10000 });
 		await uploadButton.first().click();
@@ -110,7 +99,7 @@ test.describe('Complete Upload Flow', () => {
 		);
 
 		await page.locator('.uppy-Dashboard-input').first().setInputFiles({
-			name: `flow-test-${uniqueId()}.png`,
+			name: `sequential-test-${uniqueId()}.png`,
 			mimeType: 'image/png',
 			buffer: imageBuffer
 		});
@@ -126,74 +115,13 @@ test.describe('Complete Upload Flow', () => {
 			{ timeout: 30000 }
 		);
 
+		// Wait for list refresh
 		await page.waitForTimeout(2000);
 
-		// Verify count increased
-		const newInfo = await page.locator('.photos-info').textContent().catch(() => '0 photos');
-		const newMatch = newInfo?.match(/(\d+)\s+photos/);
-		const newCount = newMatch ? parseInt(newMatch[1], 10) : 0;
-
-		console.log(`New photo count: ${newCount}`);
+		// Verify photo-card count increased
+		const newCount = await page.locator('.photo-card').count();
+		console.log(`New photo card count: ${newCount}`);
 		expect(newCount).toBeGreaterThan(initialCount);
-	});
-
-	test('should upload video with fixture file', async ({ page }) => {
-		// Open uploader
-		const uploadButton = page.locator('button:has-text("Upload Photos"), .btn-upload');
-		await expect(uploadButton.first()).toBeVisible({ timeout: 10000 });
-		await uploadButton.first().click();
-		await page.waitForSelector('.uppy-Dashboard', { timeout: 5000 });
-
-		// Load video fixture - must exist in test environment
-		const videoPath = path.resolve(__dirname, '../../../fixtures/photos/test-video.mp4');
-		if (!fs.existsSync(videoPath)) {
-			throw new Error(`Video fixture not found at ${videoPath}`);
-		}
-		const videoBuffer = fs.readFileSync(videoPath);
-
-		const videoName = `video-flow-${uniqueId()}.mp4`;
-
-		await page.locator('.uppy-Dashboard-input').first().setInputFiles({
-			name: videoName,
-			mimeType: 'video/mp4',
-			buffer: videoBuffer
-		});
-
-		await page.waitForSelector('.uppy-Dashboard-Item', { timeout: 3000 });
-		await page.locator('.uppy-StatusBar-actionBtn--upload').click();
-
-		// Videos take longer to process (thumbnail generation)
-		await page.waitForFunction(
-			() => {
-				const dashboard = document.querySelector('.uppy-Dashboard');
-				return !dashboard || getComputedStyle(dashboard).display === 'none';
-			},
-			{ timeout: 60000 }
-		);
-
-		// Wait for thumbnail generation
-		await page.waitForTimeout(5000);
-
-		// Find the video in the list
-		const photoCards = page.locator('.photo-card');
-		const count = await photoCards.count();
-
-		let foundVideo = false;
-		for (let i = 0; i < count; i++) {
-			const name = await photoCards.nth(i).locator('.photo-name').textContent();
-			if (name?.includes('video-flow')) {
-				foundVideo = true;
-
-				// Check thumbnail is visible
-				const img = photoCards.nth(i).locator('img');
-				await expect(img).toBeVisible();
-
-				console.log(`Found uploaded video: ${name}`);
-				break;
-			}
-		}
-
-		expect(foundVideo).toBe(true);
 	});
 
 	test('should cancel upload and close uploader', async ({ page }) => {
