@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const uniqueId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 
