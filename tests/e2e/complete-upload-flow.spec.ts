@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import path from 'path';
 
 const uniqueId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 
@@ -165,5 +166,33 @@ test.describe('Complete Upload Flow', () => {
 		);
 
 		console.log('Large file upload with progress completed');
+	});
+
+	test('should upload video file', async ({ page }) => {
+		const uploadButton = page.locator('button:has-text("Upload Photos"), .btn-upload');
+		await expect(uploadButton.first()).toBeVisible({ timeout: 10000 });
+		await uploadButton.first().click();
+		await page.waitForSelector('.uppy-Dashboard', { timeout: 5000 });
+
+		// Upload video file from fixtures
+		const videoPath = path.resolve(__dirname, 'fixtures/photos/test-video.mp4');
+		await page.locator('.uppy-Dashboard-input').first().setInputFiles(videoPath);
+
+		// Verify file appears in uploader
+		await page.waitForSelector('.uppy-Dashboard-Item', { timeout: 5000 });
+
+		// Start upload
+		await page.locator('.uppy-StatusBar-actionBtn--upload').click();
+
+		// Wait for completion (longer timeout for video)
+		await page.waitForFunction(
+			() => {
+				const dashboard = document.querySelector('.uppy-Dashboard');
+				return !dashboard || getComputedStyle(dashboard).display === 'none';
+			},
+			{ timeout: 60000 }
+		);
+
+		console.log('Video upload completed successfully');
 	});
 });
