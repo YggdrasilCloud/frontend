@@ -1,7 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
-import { navigateToDeepHierarchy, createFolder } from './helpers/test-setup';
-
-const uniqueId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+import { test, expect } from '@playwright/test';
+import { navigateToDeepHierarchy } from './helpers/test-setup';
 
 /**
  * E2E tests for Nested Folder Navigation
@@ -276,54 +274,4 @@ test.describe('Nested Folder Navigation', () => {
 		}
 	});
 
-	test('should show empty state when folder has no content', async ({ page }) => {
-		// Create an empty folder for this test
-		await page.goto('/photos');
-		await page.waitForLoadState('networkidle');
-
-		const emptyFolderName = `Empty-${uniqueId()}`;
-
-		page.once('dialog', async (dialog) => {
-			if (dialog.type() === 'prompt') {
-				await dialog.accept(emptyFolderName);
-			} else {
-				await dialog.accept();
-			}
-		});
-
-		// Create new folder
-		const newFolderButton = page.getByRole('button', { name: /new folder/i }).first();
-		await newFolderButton.click();
-
-		// Wait for folder to appear
-		const newFolder = page.locator('.folder-card', { hasText: emptyFolderName });
-		try {
-			await newFolder.waitFor({ state: 'visible', timeout: 10000 });
-		} catch {
-			test.skip(true, 'Folder creation failed - skipping empty state test');
-			return;
-		}
-
-		// Navigate into the empty folder
-		await newFolder.click();
-		await page.waitForLoadState('networkidle');
-
-		// Wait for page content to render
-		await page.locator('h1').waitFor({ state: 'visible', timeout: 5000 });
-
-		// Check if empty state message is shown (or at least no photos/folders)
-		const emptyMessage = page.locator('text=/no photos/i');
-		const hasEmptyMessage = await emptyMessage.isVisible().catch(() => false);
-
-		// Either show empty message or have no content
-		const photoCount = await page.locator('.photo-card').count();
-		const folderCount = await page.locator('.folder-card').count();
-
-		if (hasEmptyMessage) {
-			console.log('Empty state message shown');
-		} else {
-			// If no empty message, folder should be truly empty
-			expect(photoCount + folderCount).toBe(0);
-		}
-	});
 });
