@@ -10,5 +10,19 @@ export default defineConfig({
 		watch: {
 			usePolling: true
 		}
+	},
+	ssr: {
+		// Externalize shaka-player for SSR (client-only library)
+		noExternal: [],
+		external: [
+			'shaka-player',
+			'shaka-player/dist/shaka-player.ui',
+			'shaka-player/dist/controls.css'
+		]
+	},
+	build: {
+		rollupOptions: {
+			external: [/^shaka-player/]
+		}
 	}
 });
