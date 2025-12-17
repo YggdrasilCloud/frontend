@@ -38,6 +38,7 @@
 		"@uppy/core": "^5.2.0",
 		"@uppy/dashboard": "^5.1.0",
 		"@uppy/tus": "^5.1.0",
+		"shaka-player": "^4.16.12",
 		"svelte-dnd-action": "^0.9.51",
 		"svelte-virtual-list": "^3.0.1"
 	},
