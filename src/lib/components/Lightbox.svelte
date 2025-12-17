@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import type { PhotoDto } from '$lib/api/types';
 	import { PhotoUrlBuilder } from '$lib/domain/photo/PhotoUrlBuilder';
+	import { isVideo } from '$lib/domain/shared/MediaTypeDetector';
+	import VideoPlayer from './VideoPlayer.svelte';
 
 	export let photo: PhotoDto;
 	export let photos: PhotoDto[];
@@ -17,9 +19,10 @@
 
 	$: thumbnailUrl = photoUrlBuilder.buildThumbnailUrl(currentPhoto) || '';
 	$: originalUrl = photoUrlBuilder.buildOriginalUrl(currentPhoto);
+	$: isCurrentVideo = isVideo(currentPhoto.mimeType);
 
 	async function loadOriginal() {
-		if (!imgElement || isOriginalLoaded) return;
+		if (!imgElement || isOriginalLoaded || isCurrentVideo) return;
 
 		// Create a temporary image to preload the original
 		const tempImg = new Image();
@@ -56,7 +59,9 @@
 			currentIndex--;
 			currentPhoto = photos[currentIndex];
 			isOriginalLoaded = false;
-			loadOriginal();
+			if (!isVideo(currentPhoto.mimeType)) {
+				loadOriginal();
+			}
 		}
 	}
 
@@ -65,20 +70,24 @@
 			currentIndex++;
 			currentPhoto = photos[currentIndex];
 			isOriginalLoaded = false;
-			loadOriginal();
+			if (!isVideo(currentPhoto.mimeType)) {
+				loadOriginal();
+			}
 		}
 	}
 
 	function handleOverlayClick(event: MouseEvent) {
-		// Close only if clicking on the overlay itself, not the image
+		// Close only if clicking on the overlay itself, not the image or video
 		if (event.target === event.currentTarget) {
 			onClose();
 		}
 	}
 
 	onMount(() => {
-		// Start loading the original immediately
-		loadOriginal();
+		// Start loading the original immediately (for images)
+		if (!isCurrentVideo) {
+			loadOriginal();
+		}
 
 		// Add keyboard listener
 		window.addEventListener('keydown', handleKeydown);
@@ -101,26 +110,30 @@
 	<button class="close-button" on:click={onClose} aria-label="Close lightbox">×</button>
 
 	{#if currentIndex > 0}
-		<button class="nav-button nav-previous" on:click={navigatePrevious} aria-label="Previous photo">
+		<button class="nav-button nav-previous" on:click={navigatePrevious} aria-label="Previous media">
 			‹
 		</button>
 	{/if}
 
 	<div class="lightbox-content">
-		<img
-			bind:this={imgElement}
-			src={thumbnailUrl}
-			alt={currentPhoto.fileName}
-			class="lightbox-image"
-			class:loaded={isOriginalLoaded}
-		/>
-		{#if !isOriginalLoaded}
-			<div class="loading-indicator">Loading original...</div>
+		{#if isCurrentVideo}
+			<VideoPlayer src={originalUrl} posterUrl={thumbnailUrl} mimeType={currentPhoto.mimeType} />
+		{:else}
+			<img
+				bind:this={imgElement}
+				src={thumbnailUrl}
+				alt={currentPhoto.fileName}
+				class="lightbox-image"
+				class:loaded={isOriginalLoaded}
+			/>
+			{#if !isOriginalLoaded}
+				<div class="loading-indicator">Loading original...</div>
+			{/if}
 		{/if}
 	</div>
 
 	{#if currentIndex < photos.length - 1}
-		<button class="nav-button nav-next" on:click={navigateNext} aria-label="Next photo">›</button>
+		<button class="nav-button nav-next" on:click={navigateNext} aria-label="Next media">›</button>
 	{/if}
 
 	<div class="photo-info">
