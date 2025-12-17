@@ -20,6 +20,9 @@
 	async function initPlayer() {
 		if (!shakaModule) return;
 
+		// Install polyfills
+		shakaModule.polyfill.installAll();
+
 		// Check browser support
 		if (!shakaModule.Player.isBrowserSupported()) {
 			error = 'Browser not supported for video playback';
@@ -32,7 +35,7 @@
 			player = new shakaModule.Player();
 			await player.attach(videoElement);
 
-			// Configure player
+			// Configure player for streaming
 			player.configure({
 				streaming: {
 					bufferingGoal: 30,
@@ -41,40 +44,15 @@
 				}
 			});
 
-			// Initialize UI
-			ui = new shakaModule.ui.Overlay(player, videoContainer, videoElement);
-			const controls = ui.getControls();
-
-			// Configure UI controls
-			if (controls) {
-				controls.configure({
-					controlPanelElements: [
-						'play_pause',
-						'time_and_duration',
-						'spacer',
-						'mute',
-						'volume',
-						'fullscreen'
-					],
-					overflowMenuButtons: ['playback_rate', 'picture_in_picture'],
-					addBigPlayButton: true,
-					enableKeyboardPlaybackControls: true,
-					doubleClickForFullscreen: true,
-					singleClickForPlayAndPause: true,
-					enableTooltips: true,
-					seekBarColors: {
-						base: 'rgba(255, 255, 255, 0.3)',
-						buffered: 'rgba(255, 255, 255, 0.5)',
-						played: 'rgba(255, 255, 255, 0.9)'
-					}
-				});
-			}
-
 			// Handle errors
 			player.addEventListener('error', onPlayerError);
 
-			// Load the video
+			// Load the video FIRST, before setting up UI
 			await player.load(src, undefined, mimeType);
+
+			// Initialize UI AFTER video is loaded
+			ui = new shakaModule.ui.Overlay(player, videoContainer, videoElement);
+
 			isLoading = false;
 			isInitialized = true;
 		} catch (e) {
