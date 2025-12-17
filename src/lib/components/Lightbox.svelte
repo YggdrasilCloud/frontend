@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import type { PhotoDto } from '$lib/api/types';
 	import { PhotoUrlBuilder } from '$lib/domain/photo/PhotoUrlBuilder';
 	import { isVideo } from '$lib/domain/shared/MediaTypeDetector';
@@ -54,23 +54,27 @@
 		}
 	}
 
-	function navigatePrevious() {
+	async function navigatePrevious() {
 		if (currentIndex > 0) {
 			currentIndex--;
 			currentPhoto = photos[currentIndex];
 			isOriginalLoaded = false;
 			if (!isVideo(currentPhoto.mimeType)) {
+				// Wait for DOM update before loading original (important when switching from video to image)
+				await tick();
 				loadOriginal();
 			}
 		}
 	}
 
-	function navigateNext() {
+	async function navigateNext() {
 		if (currentIndex < photos.length - 1) {
 			currentIndex++;
 			currentPhoto = photos[currentIndex];
 			isOriginalLoaded = false;
 			if (!isVideo(currentPhoto.mimeType)) {
+				// Wait for DOM update before loading original (important when switching from video to image)
+				await tick();
 				loadOriginal();
 			}
 		}
