@@ -54,6 +54,8 @@
 	const folders = foldersQuery({}, 1, 1000);
 	const subfolders = $derived(folderChildrenQuery(folderId, {}, 1, 1000));
 	const folderPath = $derived(folderPathQuery(folderId));
+	// Safe derived value to avoid race condition when accessing folder path
+	const folderPathData = $derived($folderPath?.data?.path ?? []);
 
 	// Photos infinite query for infinite scroll
 	const photos = $derived(
@@ -192,11 +194,9 @@
 
 	// Auto-expand parent folders when landing on a subfolder via direct link
 	$effect(() => {
-		// Guard against race condition when folderId changes and query is recreated
-		const pathData = $folderPath?.data?.path;
-		if (pathData) {
+		if (folderPathData.length > 0) {
 			// Expand all parent folders in the path
-			pathData.forEach((folder) => {
+			folderPathData.forEach((folder) => {
 				expandFolder(folder.id);
 			});
 		}
@@ -346,8 +346,8 @@
 			</div>
 		</header>
 
-		{#if $folderPath?.data?.path}
-			<Breadcrumb path={$folderPath.data.path} />
+		{#if folderPathData.length > 0}
+			<Breadcrumb path={folderPathData} />
 		{/if}
 
 		<!-- Photo filters - only show when there are photos or active filters -->
