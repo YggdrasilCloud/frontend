@@ -192,9 +192,11 @@
 
 	// Auto-expand parent folders when landing on a subfolder via direct link
 	$effect(() => {
-		if ($folderPath.data) {
+		// Guard against race condition when folderId changes and query is recreated
+		const pathData = $folderPath?.data?.path;
+		if (pathData) {
 			// Expand all parent folders in the path
-			$folderPath.data.path.forEach((folder) => {
+			pathData.forEach((folder) => {
 				expandFolder(folder.id);
 			});
 		}
@@ -344,7 +346,7 @@
 			</div>
 		</header>
 
-		{#if $folderPath.data}
+		{#if $folderPath?.data?.path}
 			<Breadcrumb path={$folderPath.data.path} />
 		{/if}
 
