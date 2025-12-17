@@ -1,7 +1,5 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import shaka from 'shaka-player/dist/shaka-player.ui';
-	import 'shaka-player/dist/controls.css';
 
 	export let src: string;
 	export let posterUrl: string | null = null;
@@ -9,14 +7,21 @@
 
 	let videoContainer: HTMLDivElement;
 	let videoElement: HTMLVideoElement;
-	let player: shaka.Player | null = null;
-	let ui: shaka.ui.Overlay | null = null;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let player: any = null;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let ui: any = null;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	let shakaModule: any = null;
 	let error: string | null = null;
 	let isLoading = true;
+	let isInitialized = false;
 
 	async function initPlayer() {
+		if (!shakaModule) return;
+
 		// Check browser support
-		if (!shaka.Player.isBrowserSupported()) {
+		if (!shakaModule.Player.isBrowserSupported()) {
 			error = 'Browser not supported for video playback';
 			isLoading = false;
 			return;
@@ -24,7 +29,7 @@
 
 		try {
 			// Create player instance
-			player = new shaka.Player();
+			player = new shakaModule.Player();
 			await player.attach(videoElement);
 
 			// Configure player
@@ -37,7 +42,7 @@
 			});
 
 			// Initialize UI
-			ui = new shaka.ui.Overlay(player, videoContainer, videoElement);
+			ui = new shakaModule.ui.Overlay(player, videoContainer, videoElement);
 			const controls = ui.getControls();
 
 			// Configure UI controls
@@ -71,6 +76,7 @@
 			// Load the video
 			await player.load(src, undefined, mimeType);
 			isLoading = false;
+			isInitialized = true;
 		} catch (e) {
 			onPlayerError(e);
 		}
@@ -80,7 +86,8 @@
 		let errorMessage = 'Failed to load video';
 
 		if (event && typeof event === 'object' && 'detail' in event) {
-			const detail = (event as { detail: shaka.util.Error }).detail;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const detail = (event as { detail: any }).detail;
 			errorMessage = `Error code: ${detail.code} - ${detail.message || 'Unknown error'}`;
 			console.error('Shaka Player error:', detail);
 		} else if (event instanceof Error) {
@@ -102,9 +109,14 @@
 			await player.destroy();
 			player = null;
 		}
+		isInitialized = false;
 	}
 
-	onMount(() => {
+	onMount(async () => {
+		// Dynamic import for client-side only
+		shakaModule = await import('shaka-player/dist/shaka-player.ui');
+		// Import CSS
+		await import('shaka-player/dist/controls.css');
 		initPlayer();
 	});
 
@@ -113,7 +125,7 @@
 	});
 
 	// Reload video when src changes
-	$: if (player && src) {
+	$: if (isInitialized && player && src) {
 		isLoading = true;
 		error = null;
 		player
