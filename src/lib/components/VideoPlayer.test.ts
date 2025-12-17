@@ -224,16 +224,16 @@ describe('VideoPlayer Logic', () => {
 
 	describe('Source change detection', () => {
 		it('should detect when source changes', () => {
-			const oldSrc = 'http://example.com/video1.mp4';
-			const newSrc = 'http://example.com/video2.mp4';
+			const oldSrc: string = 'http://example.com/video1.mp4';
+			const newSrc: string = 'http://example.com/video2.mp4';
 			const hasChanged = oldSrc !== newSrc;
 
 			expect(hasChanged).toBe(true);
 		});
 
 		it('should detect when source stays the same', () => {
-			const oldSrc = 'http://example.com/video.mp4';
-			const newSrc = 'http://example.com/video.mp4';
+			const oldSrc: string = 'http://example.com/video.mp4';
+			const newSrc: string = 'http://example.com/video.mp4';
 			const hasChanged = oldSrc !== newSrc;
 
 			expect(hasChanged).toBe(false);
