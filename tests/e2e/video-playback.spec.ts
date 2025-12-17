@@ -219,4 +219,99 @@ test.describe('Video Playback', () => {
 
 		console.log(`Video filename displayed: ${filename}`);
 	});
+
+	test('should load image correctly when navigating from video to image', async ({ page }) => {
+		// First, upload an image so we have both video and image in the folder
+		const uploadButton = page.locator('button:has-text("Upload Photos"), .btn-upload');
+		await uploadButton.first().click();
+		await page.waitForSelector('.uppy-Dashboard', { timeout: 5000 });
+
+		// Upload a test image (10x10 PNG)
+		const imageBuffer = Buffer.from(
+			'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mNk+M9QzwAEjDAGNzYAAlUBf7X7B3EAAAAASUVORK5CYII=',
+			'base64'
+		);
+		const imageName = `test-image-${uniqueId()}.png`;
+
+		await page.locator('.uppy-Dashboard-input').first().setInputFiles({
+			name: imageName,
+			mimeType: 'image/png',
+			buffer: imageBuffer
+		});
+
+		await page.waitForSelector('.uppy-Dashboard-Item', { timeout: 3000 });
+		await page.locator('.uppy-StatusBar-actionBtn--upload').click();
+
+		// Wait for upload completion
+		await page.waitForFunction(
+			() => {
+				const dashboard = document.querySelector('.uppy-Dashboard');
+				return !dashboard || getComputedStyle(dashboard).display === 'none';
+			},
+			{ timeout: 30000 }
+		);
+
+		// Wait for the grid to refresh
+		await page.waitForTimeout(2000);
+
+		// Now we have both video and image. Open the video (last uploaded item)
+		// The video was uploaded in beforeEach, image was just uploaded, so order may vary
+		// Let's click on the last item and navigate
+		const lastItem = page.locator('.photo-card').last();
+		await lastItem.click();
+
+		// Wait for lightbox
+		await expect(page.locator('.lightbox-overlay')).toBeVisible({ timeout: 5000 });
+
+		// Navigate to previous item (could be video or image depending on order)
+		await page.keyboard.press('ArrowLeft');
+		await page.waitForTimeout(500);
+
+		// Check if we're on an image (no video player visible) and verify it loads
+		const videoPlayer = page.locator('[data-shaka-player-container]');
+		const isOnVideo = await videoPlayer.isVisible().catch(() => false);
+
+		if (!isOnVideo) {
+			// We're on an image - verify it loads correctly (no perpetual loading state)
+			const loadingIndicator = page.locator('.loading-indicator');
+
+			// Wait for loading to complete (loading indicator should disappear)
+			await page.waitForFunction(
+				() => {
+					const loading = document.querySelector('.loading-indicator');
+					return !loading;
+				},
+				{ timeout: 15000 }
+			);
+
+			// Verify loading indicator is gone
+			await expect(loadingIndicator).not.toBeVisible();
+
+			// Verify image has 'loaded' class (not blurry)
+			const image = page.locator('.lightbox-image');
+			await expect(image).toHaveClass(/loaded/, { timeout: 10000 });
+
+			console.log('Image loaded correctly after navigating from video');
+		} else {
+			// We're still on video, navigate again
+			await page.keyboard.press('ArrowLeft');
+			await page.waitForTimeout(500);
+
+			// Now check image loading
+			const loadingIndicator = page.locator('.loading-indicator');
+			await page.waitForFunction(
+				() => {
+					const loading = document.querySelector('.loading-indicator');
+					return !loading;
+				},
+				{ timeout: 15000 }
+			);
+
+			await expect(loadingIndicator).not.toBeVisible();
+			const image = page.locator('.lightbox-image');
+			await expect(image).toHaveClass(/loaded/, { timeout: 10000 });
+
+			console.log('Image loaded correctly after navigating from video (second attempt)');
+		}
+	});
 });
