@@ -84,7 +84,7 @@ jobs:
           client-payload: |
             {
               "core_ref": "${{ needs.resolve-core-version.outputs.core_version }}",
-              "frontend_ref": "main",
+              "frontend_ref": "${{ github.ref_name }}",
               "frontend_sha": "${{ github.sha }}",
               "triggered_by": "frontend",
               "target_version": "${{ inputs.version }}",
@@ -160,7 +160,7 @@ jobs:
             ## Release ${{ inputs.version }}
 
             **Tested with:**
-            - Frontend: `main` (${{ github.sha }})
+            - Frontend: `${{ github.ref_name }}` (${{ github.sha }})
             - Core: `${{ needs.resolve-core-version.outputs.core_version }}`
 
             Full E2E test report: [Workflow run](https://github.com/YggdrasilCloud/tests-e2e/actions)
