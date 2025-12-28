@@ -4,7 +4,7 @@
 	import { createInfiniteQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { foldersQuery, folderChildrenQuery, folderPathQuery } from '$lib/api/queries/folders';
 	import { createFolderMutation } from '$lib/api/mutations/createFolder';
-	import { bulkDeletePhotosMutation } from '$lib/api/mutations/bulkPhotos';
+	import { bulkDeletePhotosMutation, bulkMovePhotosMutation } from '$lib/api/mutations/bulkPhotos';
 	import UppyUploader from '$lib/components/UppyUploader.svelte';
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
@@ -159,6 +159,9 @@
 	// Bulk delete mutation - needs to be derived since folderId can change
 	const bulkDelete = $derived(bulkDeletePhotosMutation(folderId));
 
+	// Bulk move mutation - needs to be derived since folderId can change
+	const bulkMove = $derived(bulkMovePhotosMutation(folderId));
+
 	// Clear selection when folder changes
 	$effect(() => {
 		void folderId; // track as dependency
@@ -213,6 +216,52 @@
 	function handleCheckboxClick(event: MouseEvent, photoId: string) {
 		event.stopPropagation();
 		photoSelection.toggle(photoId);
+	}
+
+	// Handle drag start for selected photos
+	function handlePhotoDragStart(event: DragEvent, photo: PhotoDto) {
+		// If dragging a non-selected photo, select only that photo
+		if (!photoSelection.isSelected(photo.id)) {
+			photoSelection.selectOnly(photo.id);
+		}
+
+		const selectedIds = photoSelection.getSelectedIds();
+		event.dataTransfer?.setData('application/x-photo-ids', JSON.stringify(selectedIds));
+		event.dataTransfer!.effectAllowed = 'move';
+
+		// Set a custom drag image with count
+		const dragImage = document.createElement('div');
+		dragImage.textContent = `${selectedIds.length} photo(s)`;
+		dragImage.style.cssText =
+			'padding: 8px 16px; background: var(--color-primary, #007bff); color: white; border-radius: 4px; font-weight: 500;';
+		document.body.appendChild(dragImage);
+		event.dataTransfer?.setDragImage(dragImage, 0, 0);
+		setTimeout(() => document.body.removeChild(dragImage), 0);
+	}
+
+	// Handle photo drop on folder
+	async function handlePhotoDrop(targetFolderId: string) {
+		const selectedIds = photoSelection.getSelectedIds();
+		if (selectedIds.length === 0) return;
+
+		try {
+			const result = await $bulkMove.mutateAsync({
+				photoIds: selectedIds,
+				targetFolderId
+			});
+
+			if (result.summary.failedCount > 0) {
+				const failedReasons = result.failed.map((f) => `- ${f.reason}`).join('\n');
+				alert(
+					`Moved ${result.summary.movedCount} photos.\n\nFailed to move ${result.summary.failedCount}:\n${failedReasons}`
+				);
+			}
+
+			photoSelection.clear();
+		} catch (error) {
+			alert('Failed to move photos');
+			console.error(error);
+		}
 	}
 
 	// Initialize domain services
@@ -383,6 +432,7 @@
 						{expandedFolders}
 						{toggleExpand}
 						{expandFolder}
+						onPhotoDrop={handlePhotoDrop}
 					/>
 				{/if}
 			{/if}
@@ -496,8 +546,10 @@
 									class:selected={photoSelection.isSelected(photo.id)}
 									onclick={(e) => handlePhotoClick(e, photo)}
 									onkeydown={(e) => handlePhotoKeydown(e, photo)}
+									ondragstart={(e) => handlePhotoDragStart(e, photo)}
 									role="button"
 									tabindex="0"
+									draggable="true"
 								>
 									<div
 										class="checkbox-overlay"
