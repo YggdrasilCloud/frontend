@@ -9,11 +9,14 @@
 	export let toggleExpand: (folderId: string) => void;
 	export let expandFolder: (folderId: string) => void;
 	export let getChildren: (folderId: string) => FolderDto[];
+	export let onPhotoDrop: ((targetFolderId: string) => void) | undefined = undefined;
 
 	$: children = getChildren(folder.id);
 	$: hasChildren = children.length > 0;
 	$: isExpanded = $expandedFolders.has(folder.id);
 	$: isActive = folder.id === currentFolderId;
+
+	let isDragOver = false;
 
 	function handleToggle(event: MouseEvent) {
 		event.preventDefault();
@@ -29,6 +32,33 @@
 			expandFolder(folder.id);
 		}
 	}
+
+	function handleDragOver(event: DragEvent) {
+		// Only accept photo drops (not dropping on current folder)
+		if (folder.id === currentFolderId) return;
+		if (!event.dataTransfer?.types.includes('application/x-photo-ids')) return;
+
+		event.preventDefault();
+		event.dataTransfer.dropEffect = 'move';
+		isDragOver = true;
+	}
+
+	function handleDragLeave() {
+		isDragOver = false;
+	}
+
+	function handleDrop(event: DragEvent) {
+		event.preventDefault();
+		isDragOver = false;
+
+		if (!onPhotoDrop) return;
+		if (folder.id === currentFolderId) return;
+
+		const photoIds = event.dataTransfer?.getData('application/x-photo-ids');
+		if (photoIds) {
+			onPhotoDrop(folder.id);
+		}
+	}
 </script>
 
 <div class="folder-tree-item">
@@ -36,8 +66,12 @@
 		href="/photos/{folder.id}"
 		class="folder-item"
 		class:active={isActive}
+		class:drag-over={isDragOver}
 		style="padding-left: {depth * 1.5 + 0.75}rem"
 		on:click={handleItemClick}
+		on:dragover={handleDragOver}
+		on:dragleave={handleDragLeave}
+		on:drop={handleDrop}
 	>
 		{#if hasChildren}
 			<button class="expand-toggle" on:click={handleToggle} aria-label="Toggle folder">
@@ -60,6 +94,7 @@
 				{toggleExpand}
 				{expandFolder}
 				{getChildren}
+				{onPhotoDrop}
 			/>
 		{/each}
 	{/if}
@@ -92,6 +127,13 @@
 	.folder-item.active {
 		background-color: var(--color-primary);
 		color: white;
+	}
+
+	.folder-item.drag-over {
+		background-color: var(--color-primary);
+		color: white;
+		outline: 2px dashed white;
+		outline-offset: -2px;
 	}
 
 	.expand-toggle {

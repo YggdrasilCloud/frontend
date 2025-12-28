@@ -8,6 +8,7 @@
 	export let expandedFolders: Writable<Set<string>>;
 	export let toggleExpand: (folderId: string) => void;
 	export let expandFolder: (folderId: string) => void;
+	export let onPhotoDrop: ((targetFolderId: string) => void) | undefined = undefined;
 
 	// Build hierarchy from flat list - return only root folders
 	function getRootFolders(folders: FolderDto[]): FolderDto[] {
@@ -32,6 +33,7 @@
 			{toggleExpand}
 			{expandFolder}
 			{getChildren}
+			{onPhotoDrop}
 		/>
 	{/each}
 </div>
