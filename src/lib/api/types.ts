@@ -113,3 +113,37 @@ export interface UploadPhotoResponse {
 	mimeType: string;
 	sizeInBytes: number;
 }
+
+// Bulk operations types
+export interface BulkDeletePhotosRequest {
+	photoIds: string[];
+}
+
+export interface BulkMovePhotosRequest {
+	photoIds: string[];
+	targetFolderId: string;
+}
+
+export interface BulkOperationFailure {
+	photoId: string;
+	reason: string;
+}
+
+export interface BulkOperationSummary {
+	total: number;
+	deletedCount?: number;
+	movedCount?: number;
+	failedCount: number;
+}
+
+export interface BulkDeleteResponse {
+	deleted: string[];
+	failed: BulkOperationFailure[];
+	summary: BulkOperationSummary;
+}
+
+export interface BulkMoveResponse {
+	moved: string[];
+	failed: BulkOperationFailure[];
+	summary: BulkOperationSummary;
+}

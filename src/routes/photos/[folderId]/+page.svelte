@@ -4,11 +4,13 @@
 	import { createInfiniteQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { foldersQuery, folderChildrenQuery, folderPathQuery } from '$lib/api/queries/folders';
 	import { createFolderMutation } from '$lib/api/mutations/createFolder';
+	import { bulkDeletePhotosMutation } from '$lib/api/mutations/bulkPhotos';
 	import UppyUploader from '$lib/components/UppyUploader.svelte';
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import FolderTree from '$lib/components/FolderTree.svelte';
 	import PhotoFilters from '$lib/components/PhotoFilters.svelte';
+	import BulkActionsBar from '$lib/components/BulkActionsBar.svelte';
 	import { env } from '$env/dynamic/public';
 	import type { PhotoDto, PhotoQueryParams, ListPhotosResponse } from '$lib/api/types';
 	import { PhotoUrlBuilder } from '$lib/domain/photo/PhotoUrlBuilder';
@@ -17,6 +19,7 @@
 	import { UploadConfiguration } from '$lib/domain/shared/UploadConfiguration';
 	import { apiClient } from '$lib/api/client';
 	import { buildPhotoQueryString } from '$lib/api/utils/buildQueryString';
+	import { photoSelection } from '$lib/stores/photoSelection.svelte';
 
 	// Photo filtering and sorting state
 	let photoParams: PhotoQueryParams = $state({
@@ -152,6 +155,65 @@
 	});
 
 	const createFolder = createFolderMutation();
+
+	// Bulk delete mutation - needs to be derived since folderId can change
+	const bulkDelete = $derived(bulkDeletePhotosMutation(folderId));
+
+	// Clear selection when folder changes
+	$effect(() => {
+		void folderId; // track as dependency
+		photoSelection.clear();
+	});
+
+	// Handle bulk delete action
+	async function handleBulkDelete() {
+		const selectedIds = photoSelection.getSelectedIds();
+		if (selectedIds.length === 0) return;
+
+		const confirmed = confirm(`Delete ${selectedIds.length} photo(s)? This cannot be undone.`);
+		if (!confirmed) return;
+
+		try {
+			const result = await $bulkDelete.mutateAsync({ photoIds: selectedIds });
+
+			if (result.summary.failedCount > 0) {
+				const failedReasons = result.failed.map((f) => `- ${f.reason}`).join('\n');
+				alert(
+					`Deleted ${result.summary.deletedCount} photos.\n\nFailed to delete ${result.summary.failedCount}:\n${failedReasons}`
+				);
+			}
+
+			photoSelection.clear();
+		} catch (error) {
+			alert('Failed to delete photos');
+			console.error(error);
+		}
+	}
+
+	// Handle photo click with selection support
+	function handlePhotoClick(event: MouseEvent, photo: PhotoDto) {
+		if (event.ctrlKey || event.metaKey) {
+			// Ctrl/Cmd + Click: Toggle selection
+			event.preventDefault();
+			photoSelection.toggle(photo.id);
+		} else if (event.shiftKey) {
+			// Shift + Click: Range selection
+			event.preventDefault();
+			photoSelection.selectRange(allPhotos, photo.id);
+		} else if (photoSelection.isSelectionMode) {
+			// In selection mode: toggle
+			photoSelection.toggle(photo.id);
+		} else {
+			// Normal click: open lightbox
+			openLightbox(photo);
+		}
+	}
+
+	// Handle checkbox click
+	function handleCheckboxClick(event: MouseEvent, photoId: string) {
+		event.stopPropagation();
+		photoSelection.toggle(photoId);
+	}
 
 	// Initialize domain services
 	const apiBaseUrl = env.PUBLIC_API_URL || 'http://localhost:8888';
@@ -431,11 +493,24 @@
 							{#each allPhotos as photo (photo.id)}
 								<div
 									class="photo-card"
-									onclick={() => openLightbox(photo)}
+									class:selected={photoSelection.isSelected(photo.id)}
+									onclick={(e) => handlePhotoClick(e, photo)}
 									onkeydown={(e) => handlePhotoKeydown(e, photo)}
 									role="button"
 									tabindex="0"
 								>
+									<div
+										class="checkbox-overlay"
+										class:visible={photoSelection.isSelectionMode ||
+											photoSelection.isSelected(photo.id)}
+									>
+										<input
+											type="checkbox"
+											checked={photoSelection.isSelected(photo.id)}
+											onclick={(e) => handleCheckboxClick(e, photo.id)}
+											aria-label="Select photo"
+										/>
+									</div>
 									<img
 										src={getImageUrl(photo)}
 										alt={photo.fileName}
@@ -471,6 +546,8 @@
 {#if selectedPhoto}
 	<Lightbox photo={selectedPhoto} photos={allPhotos} {apiBaseUrl} onClose={closeLightbox} />
 {/if}
+
+<BulkActionsBar onDelete={handleBulkDelete} isDeleting={$bulkDelete.isPending} />
 
 <style>
 	.explorer {
@@ -577,12 +654,39 @@
 	}
 
 	.photo-card {
+		position: relative;
 		background: var(--color-bg-alt);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
 		overflow: hidden;
 		transition: all 0.2s;
 		cursor: pointer;
+	}
+
+	.photo-card.selected {
+		border-color: var(--color-primary);
+		box-shadow: 0 0 0 2px var(--color-primary);
+	}
+
+	.checkbox-overlay {
+		position: absolute;
+		top: var(--spacing-sm);
+		left: var(--spacing-sm);
+		z-index: 10;
+		opacity: 0;
+		transition: opacity 0.15s ease;
+	}
+
+	.photo-card:hover .checkbox-overlay,
+	.checkbox-overlay.visible {
+		opacity: 1;
+	}
+
+	.checkbox-overlay input[type='checkbox'] {
+		width: 20px;
+		height: 20px;
+		cursor: pointer;
+		accent-color: var(--color-primary);
 	}
 
 	.photo-card:hover {
