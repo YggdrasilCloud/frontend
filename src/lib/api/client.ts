@@ -69,6 +69,20 @@ export class ApiClient {
 
 		return response.json();
 	}
+
+	async patch<T>(path: string, data: unknown): Promise<T> {
+		const response = await fetch(`${this.baseUrl}${path}`, {
+			method: 'PATCH',
+			headers: this.getHeaders(),
+			body: JSON.stringify(data)
+		});
+
+		if (!response.ok) {
+			throw new Error(`API Error: ${response.status} ${response.statusText}`);
+		}
+
+		return response.json();
+	}
 }
 
 export const apiClient = new ApiClient();
