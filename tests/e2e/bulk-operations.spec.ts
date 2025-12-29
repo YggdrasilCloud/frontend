@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { navigateToFolderWithPhotos } from './helpers/test-setup';
 
+// Helper to detect mobile viewport - hover, Ctrl/Shift+Click, and drag & drop don't work on touch devices
+const isMobile = (testInfo: { project: { name: string } }) =>
+	testInfo.project.name.includes('Mobile');
+
 test.describe('Bulk Operations', () => {
 	test.describe('Photo Selection', () => {
 		test.beforeEach(async ({ page }) => {
@@ -9,7 +13,10 @@ test.describe('Bulk Operations', () => {
 			await page.waitForSelector('.photo-card', { timeout: 10000 }).catch(() => {});
 		});
 
-		test('should show checkbox on hover', async ({ page }) => {
+		test('should show checkbox on hover', async ({ page }, testInfo) => {
+			// Hover doesn't work on touch devices
+			test.skip(isMobile(testInfo), 'Hover is not supported on mobile');
+
 			const photoCard = page.locator('.photo-card').first();
 			const checkboxOverlay = photoCard.locator('.checkbox-overlay');
 
@@ -23,7 +30,10 @@ test.describe('Bulk Operations', () => {
 			await expect(checkboxOverlay).toHaveCSS('opacity', '1');
 		});
 
-		test('should toggle selection on checkbox click', async ({ page }) => {
+		test('should toggle selection on checkbox click', async ({ page }, testInfo) => {
+			// Requires hover to reveal checkbox
+			test.skip(isMobile(testInfo), 'Hover is not supported on mobile');
+
 			const photoCard = page.locator('.photo-card').first();
 			const checkbox = photoCard.locator('input[type="checkbox"]');
 
@@ -42,7 +52,10 @@ test.describe('Bulk Operations', () => {
 			await expect(photoCard).not.toHaveClass(/selected/);
 		});
 
-		test('should toggle selection on Ctrl+Click', async ({ page }) => {
+		test('should toggle selection on Ctrl+Click', async ({ page }, testInfo) => {
+			// Ctrl+Click doesn't work on touch devices
+			test.skip(isMobile(testInfo), 'Ctrl+Click is not supported on mobile');
+
 			const photoCard = page.locator('.photo-card').first();
 
 			// Initially not selected
@@ -57,7 +70,10 @@ test.describe('Bulk Operations', () => {
 			await expect(photoCard).not.toHaveClass(/selected/);
 		});
 
-		test('should select range on Shift+Click', async ({ page }) => {
+		test('should select range on Shift+Click', async ({ page }, testInfo) => {
+			// Shift+Click doesn't work on touch devices
+			test.skip(isMobile(testInfo), 'Shift+Click is not supported on mobile');
+
 			const photos = page.locator('.photo-card');
 			const count = await photos.count();
 
@@ -79,7 +95,10 @@ test.describe('Bulk Operations', () => {
 			await expect(photos.nth(2)).toHaveClass(/selected/);
 		});
 
-		test('should show bulk actions bar when photos are selected', async ({ page }) => {
+		test('should show bulk actions bar when photos are selected', async ({ page }, testInfo) => {
+			// Uses Ctrl+Click for selection
+			test.skip(isMobile(testInfo), 'Ctrl+Click is not supported on mobile');
+
 			const bulkActionsBar = page.locator('.bulk-actions-bar');
 
 			// Initially hidden
@@ -94,7 +113,10 @@ test.describe('Bulk Operations', () => {
 			await expect(bulkActionsBar).toContainText('1 selected');
 		});
 
-		test('should update selection count in bulk actions bar', async ({ page }) => {
+		test('should update selection count in bulk actions bar', async ({ page }, testInfo) => {
+			// Uses Ctrl+Click for selection
+			test.skip(isMobile(testInfo), 'Ctrl+Click is not supported on mobile');
+
 			const photos = page.locator('.photo-card');
 			const bulkActionsBar = page.locator('.bulk-actions-bar');
 			const count = await photos.count();
@@ -113,7 +135,10 @@ test.describe('Bulk Operations', () => {
 			await expect(bulkActionsBar).toContainText('2 selected');
 		});
 
-		test('should clear selection via clear button', async ({ page }) => {
+		test('should clear selection via clear button', async ({ page }, testInfo) => {
+			// Uses Ctrl+Click for selection
+			test.skip(isMobile(testInfo), 'Ctrl+Click is not supported on mobile');
+
 			const photoCard = page.locator('.photo-card').first();
 			const bulkActionsBar = page.locator('.bulk-actions-bar');
 			const clearButton = page.locator('.btn-clear');
@@ -130,7 +155,10 @@ test.describe('Bulk Operations', () => {
 			await expect(photoCard).not.toHaveClass(/selected/);
 		});
 
-		test('should clear selection when navigating to another folder', async ({ page }) => {
+		test('should clear selection when navigating to another folder', async ({ page }, testInfo) => {
+			// Uses Ctrl+Click for selection
+			test.skip(isMobile(testInfo), 'Ctrl+Click is not supported on mobile');
+
 			const photoCard = page.locator('.photo-card').first();
 			const bulkActionsBar = page.locator('.bulk-actions-bar');
 
@@ -156,7 +184,10 @@ test.describe('Bulk Operations', () => {
 	});
 
 	test.describe('Bulk Delete', () => {
-		test('should show delete button in bulk actions bar', async ({ page }) => {
+		test('should show delete button in bulk actions bar', async ({ page }, testInfo) => {
+			// Uses Ctrl+Click for selection
+			test.skip(isMobile(testInfo), 'Ctrl+Click is not supported on mobile');
+
 			await navigateToFolderWithPhotos(page);
 			await page.waitForSelector('.photo-card', { timeout: 10000 }).catch(() => {});
 
@@ -168,7 +199,10 @@ test.describe('Bulk Operations', () => {
 			await expect(deleteButton).toContainText('Delete Selected');
 		});
 
-		test('should show confirmation dialog before deleting', async ({ page }) => {
+		test('should show confirmation dialog before deleting', async ({ page }, testInfo) => {
+			// Uses Ctrl+Click for selection
+			test.skip(isMobile(testInfo), 'Ctrl+Click is not supported on mobile');
+
 			await navigateToFolderWithPhotos(page);
 			await page.waitForSelector('.photo-card', { timeout: 10000 }).catch(() => {});
 
@@ -196,7 +230,10 @@ test.describe('Bulk Operations', () => {
 	});
 
 	test.describe('Drag and Drop', () => {
-		test('should make selected photos draggable', async ({ page }) => {
+		test('should make selected photos draggable', async ({ page }, testInfo) => {
+			// HTML5 Drag and Drop doesn't work on touch devices
+			test.skip(isMobile(testInfo), 'Drag and drop is not supported on mobile');
+
 			await navigateToFolderWithPhotos(page);
 			await page.waitForSelector('.photo-card', { timeout: 10000 }).catch(() => {});
 
@@ -206,7 +243,10 @@ test.describe('Bulk Operations', () => {
 			await expect(photoCard).toHaveAttribute('draggable', 'true');
 		});
 
-		test('should highlight folder on drag over', async ({ page }) => {
+		test('should highlight folder on drag over', async ({ page }, testInfo) => {
+			// HTML5 Drag and Drop + Ctrl+Click don't work on touch devices
+			test.skip(isMobile(testInfo), 'Drag and drop is not supported on mobile');
+
 			await navigateToFolderWithPhotos(page);
 			await page.waitForSelector('.photo-card', { timeout: 10000 }).catch(() => {});
 
