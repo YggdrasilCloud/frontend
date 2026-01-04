@@ -1,18 +1,27 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { writable } from 'svelte/store';
 	import { createInfiniteQuery, useQueryClient } from '@tanstack/svelte-query';
 	import { foldersQuery, folderChildrenQuery, folderPathQuery } from '$lib/api/queries/folders';
 	import { createFolderMutation } from '$lib/api/mutations/createFolder';
 	import { bulkDeletePhotosMutation, bulkMovePhotosMutation } from '$lib/api/mutations/bulkPhotos';
+	import {
+		renameFolderMutation,
+		deleteFolderMutation,
+		moveFolderMutation
+	} from '$lib/api/mutations/folderOperations';
 	import UppyUploader from '$lib/components/UppyUploader.svelte';
 	import Lightbox from '$lib/components/Lightbox.svelte';
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import FolderTree from '$lib/components/FolderTree.svelte';
 	import PhotoFilters from '$lib/components/PhotoFilters.svelte';
 	import BulkActionsBar from '$lib/components/BulkActionsBar.svelte';
+	import FolderContextMenu from '$lib/components/FolderContextMenu.svelte';
+	import RenameDialog from '$lib/components/RenameDialog.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import { env } from '$env/dynamic/public';
-	import type { PhotoDto, PhotoQueryParams, ListPhotosResponse } from '$lib/api/types';
+	import type { PhotoDto, PhotoQueryParams, ListPhotosResponse, FolderDto } from '$lib/api/types';
 	import { PhotoUrlBuilder } from '$lib/domain/photo/PhotoUrlBuilder';
 	import { PhotoFileSizeFormatter } from '$lib/domain/photo/PhotoFileSizeFormatter';
 	import { FolderNameValidator } from '$lib/domain/folder/FolderNameValidator';
@@ -162,6 +171,20 @@
 	// Bulk move mutation - needs to be derived since folderId can change
 	const bulkMove = $derived(bulkMovePhotosMutation(folderId));
 
+	// Folder operations mutations
+	const renameFolder = renameFolderMutation();
+	const deleteFolder = deleteFolderMutation();
+	const moveFolder = moveFolderMutation();
+
+	// Context menu state
+	let contextMenu = $state<{ folder: FolderDto; x: number; y: number } | null>(null);
+
+	// Dialog states
+	let renameDialogOpen = $state(false);
+	let deleteDialogOpen = $state(false);
+	let folderToRename = $state<FolderDto | null>(null);
+	let folderToDelete = $state<FolderDto | null>(null);
+
 	// Clear selection when folder changes
 	$effect(() => {
 		void folderId; // track as dependency
@@ -262,6 +285,122 @@
 			alert('Failed to move photos');
 			console.error(error);
 		}
+	}
+
+	// Handle folder drop (move folder to new parent)
+	async function handleFolderDrop(droppedFolderId: string, targetParentId: string | null) {
+		try {
+			await $moveFolder.mutateAsync({ folderId: droppedFolderId, targetParentId });
+		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : 'Failed to move folder';
+			alert(`Error: ${errorMsg}`);
+			console.error('Failed to move folder:', error);
+		}
+	}
+
+	// Handle folder context menu
+	function handleFolderContextMenu(folder: FolderDto, x: number, y: number) {
+		contextMenu = { folder, x, y };
+	}
+
+	function closeContextMenu() {
+		contextMenu = null;
+	}
+
+	// Folder rename handlers
+	function openRenameDialog() {
+		if (!contextMenu) return;
+		folderToRename = contextMenu.folder;
+		renameDialogOpen = true;
+		closeContextMenu();
+	}
+
+	async function handleRenameConfirm(newName: string) {
+		if (!folderToRename) return;
+
+		try {
+			await $renameFolder.mutateAsync({ folderId: folderToRename.id, name: newName });
+			renameDialogOpen = false;
+			folderToRename = null;
+		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : 'Failed to rename folder';
+			alert(`Error: ${errorMsg}`);
+			console.error('Failed to rename folder:', error);
+		}
+	}
+
+	function handleRenameCancel() {
+		renameDialogOpen = false;
+		folderToRename = null;
+	}
+
+	// Folder delete handlers
+	function openDeleteDialog() {
+		if (!contextMenu) return;
+		folderToDelete = contextMenu.folder;
+		deleteDialogOpen = true;
+		closeContextMenu();
+	}
+
+	async function handleDeleteConfirm() {
+		if (!folderToDelete) return;
+
+		try {
+			const result = await $deleteFolder.mutateAsync({
+				folderId: folderToDelete.id,
+				recursive: true
+			});
+
+			// If we deleted the current folder, navigate to parent or root
+			if (folderToDelete.id === folderId) {
+				const parentId = folderToDelete.parentId;
+				if (parentId) {
+					goto(`/photos/${parentId}`);
+				} else {
+					// Navigate to first available folder or stay on current page
+					const remainingFolders = $folders.data?.data.filter((f) => f.id !== folderToDelete!.id);
+					if (remainingFolders && remainingFolders.length > 0) {
+						goto(`/photos/${remainingFolders[0].id}`);
+					}
+				}
+			}
+
+			deleteDialogOpen = false;
+			folderToDelete = null;
+
+			// Show summary if content was deleted
+			if (result.deleted.photosDeleted > 0 || result.deleted.subfoldersDeleted > 0) {
+				alert(
+					`Folder deleted.\n${result.deleted.photosDeleted} photo(s) and ${result.deleted.subfoldersDeleted} subfolder(s) were also removed.`
+				);
+			}
+		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : 'Failed to delete folder';
+			alert(`Error: ${errorMsg}`);
+			console.error('Failed to delete folder:', error);
+		}
+	}
+
+	function handleDeleteCancel() {
+		deleteDialogOpen = false;
+		folderToDelete = null;
+	}
+
+	// Move folder handler (from context menu - placeholder for folder picker dialog)
+	function openMoveDialog() {
+		if (!contextMenu) return;
+		// For now, prompt for parent folder ID (a proper folder picker dialog would be better UX)
+		const targetId = prompt(
+			'Enter target folder ID (leave empty for root):',
+			contextMenu.folder.parentId ?? ''
+		);
+		if (targetId === null) {
+			closeContextMenu();
+			return;
+		}
+
+		handleFolderDrop(contextMenu.folder.id, targetId === '' ? null : targetId);
+		closeContextMenu();
 	}
 
 	// Initialize domain services
@@ -433,6 +572,8 @@
 						{toggleExpand}
 						{expandFolder}
 						onPhotoDrop={handlePhotoDrop}
+						onFolderDrop={handleFolderDrop}
+						onContextMenu={handleFolderContextMenu}
 					/>
 				{/if}
 			{/if}
@@ -600,6 +741,35 @@
 {/if}
 
 <BulkActionsBar onDelete={handleBulkDelete} isDeleting={$bulkDelete.isPending} />
+
+{#if contextMenu}
+	<FolderContextMenu
+		x={contextMenu.x}
+		y={contextMenu.y}
+		onRename={openRenameDialog}
+		onDelete={openDeleteDialog}
+		onMove={openMoveDialog}
+		onClose={closeContextMenu}
+	/>
+{/if}
+
+<RenameDialog
+	open={renameDialogOpen}
+	currentName={folderToRename?.name ?? ''}
+	onConfirm={handleRenameConfirm}
+	onCancel={handleRenameCancel}
+/>
+
+<ConfirmDialog
+	open={deleteDialogOpen}
+	title="Delete Folder"
+	message={`Are you sure you want to delete "${folderToDelete?.name}"? This will permanently delete all photos and subfolders inside.`}
+	confirmLabel="Delete"
+	cancelLabel="Cancel"
+	danger={true}
+	onConfirm={handleDeleteConfirm}
+	onCancel={handleDeleteCancel}
+/>
 
 <style>
 	.explorer {
