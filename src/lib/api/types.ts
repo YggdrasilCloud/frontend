@@ -147,3 +147,30 @@ export interface BulkMoveResponse {
 	failed: BulkOperationFailure[];
 	summary: BulkOperationSummary;
 }
+
+// Folder operations types
+export interface RenameFolderRequest {
+	name: string;
+}
+
+export interface RenameFolderResponse {
+	id: string;
+	name: string;
+}
+
+export interface DeleteFolderResponse {
+	deleted: {
+		folderId: string;
+		photosDeleted: number;
+		subfoldersDeleted: number;
+	};
+}
+
+export interface MoveFolderRequest {
+	targetParentId: string | null;
+}
+
+export interface MoveFolderResponse {
+	id: string;
+	parentId: string | null;
+}
