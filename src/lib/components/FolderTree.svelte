@@ -9,6 +9,10 @@
 	export let toggleExpand: (folderId: string) => void;
 	export let expandFolder: (folderId: string) => void;
 	export let onPhotoDrop: ((targetFolderId: string) => void) | undefined = undefined;
+	export let onFolderDrop: ((folderId: string, targetFolderId: string | null) => void) | undefined =
+		undefined;
+	export let onContextMenu: ((folder: FolderDto, x: number, y: number) => void) | undefined =
+		undefined;
 
 	// Build hierarchy from flat list - return only root folders
 	function getRootFolders(folders: FolderDto[]): FolderDto[] {
@@ -21,6 +25,30 @@
 	}
 
 	$: rootFolders = getRootFolders(folders);
+
+	let isRootDragOver = false;
+
+	function handleRootDragOver(event: DragEvent) {
+		if (!event.dataTransfer?.types.includes('application/x-folder-id')) return;
+		event.preventDefault();
+		event.dataTransfer.dropEffect = 'move';
+		isRootDragOver = true;
+	}
+
+	function handleRootDragLeave() {
+		isRootDragOver = false;
+	}
+
+	function handleRootDrop(event: DragEvent) {
+		event.preventDefault();
+		isRootDragOver = false;
+
+		const folderId = event.dataTransfer?.getData('application/x-folder-id');
+		if (folderId && onFolderDrop) {
+			// Move to root (null parent)
+			onFolderDrop(folderId, null);
+		}
+	}
 </script>
 
 <div class="folder-tree">
@@ -34,13 +62,56 @@
 			{expandFolder}
 			{getChildren}
 			{onPhotoDrop}
+			{onFolderDrop}
+			{onContextMenu}
 		/>
 	{/each}
+
+	{#if onFolderDrop}
+		<div
+			class="root-drop-zone"
+			class:drag-over={isRootDragOver}
+			on:dragover={handleRootDragOver}
+			on:dragleave={handleRootDragLeave}
+			on:drop={handleRootDrop}
+			role="region"
+			aria-label="Drop zone for moving folders to root"
+		>
+			<span class="drop-hint">Drop here to move to root</span>
+		</div>
+	{/if}
 </div>
 
 <style>
 	.folder-tree {
 		display: flex;
 		flex-direction: column;
+	}
+
+	.root-drop-zone {
+		margin-top: var(--spacing-sm);
+		padding: var(--spacing-md);
+		border: 2px dashed var(--color-border);
+		border-radius: var(--radius-sm);
+		text-align: center;
+		opacity: 0;
+		transition:
+			opacity 0.2s,
+			background-color 0.2s;
+	}
+
+	.root-drop-zone.drag-over {
+		opacity: 1;
+		background-color: var(--color-bg);
+		border-color: var(--color-primary);
+	}
+
+	.drop-hint {
+		font-size: 0.85rem;
+		color: var(--color-text-secondary);
+	}
+
+	.root-drop-zone.drag-over .drop-hint {
+		color: var(--color-primary);
 	}
 </style>
