@@ -386,23 +386,6 @@
 		folderToDelete = null;
 	}
 
-	// Move folder handler (from context menu - placeholder for folder picker dialog)
-	function openMoveDialog() {
-		if (!contextMenu) return;
-		// For now, prompt for parent folder ID (a proper folder picker dialog would be better UX)
-		const targetId = prompt(
-			'Enter target folder ID (leave empty for root):',
-			contextMenu.folder.parentId ?? ''
-		);
-		if (targetId === null) {
-			closeContextMenu();
-			return;
-		}
-
-		handleFolderDrop(contextMenu.folder.id, targetId === '' ? null : targetId);
-		closeContextMenu();
-	}
-
 	// Initialize domain services
 	const apiBaseUrl = env.PUBLIC_API_URL || 'http://localhost:8888';
 	const photoUrlBuilder = new PhotoUrlBuilder(apiBaseUrl);
@@ -748,7 +731,6 @@
 		y={contextMenu.y}
 		onRename={openRenameDialog}
 		onDelete={openDeleteDialog}
-		onMove={openMoveDialog}
 		onClose={closeContextMenu}
 	/>
 {/if}
