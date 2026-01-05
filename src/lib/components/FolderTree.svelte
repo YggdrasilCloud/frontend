@@ -90,28 +90,36 @@
 
 	.root-drop-zone {
 		margin-top: var(--spacing-sm);
-		padding: var(--spacing-md);
-		border: 2px dashed var(--color-border);
+		padding: var(--spacing-sm);
+		border: 1px dashed var(--color-border);
 		border-radius: var(--radius-sm);
 		text-align: center;
-		opacity: 0;
+		opacity: 0.5;
 		transition:
 			opacity 0.2s,
-			background-color 0.2s;
+			background-color 0.2s,
+			border-color 0.2s;
+	}
+
+	.root-drop-zone:hover {
+		opacity: 0.8;
 	}
 
 	.root-drop-zone.drag-over {
 		opacity: 1;
 		background-color: var(--color-bg);
 		border-color: var(--color-primary);
+		border-width: 2px;
+		padding: calc(var(--spacing-sm) - 1px);
 	}
 
 	.drop-hint {
-		font-size: 0.85rem;
+		font-size: 0.8rem;
 		color: var(--color-text-secondary);
 	}
 
 	.root-drop-zone.drag-over .drop-hint {
 		color: var(--color-primary);
+		font-weight: 500;
 	}
 </style>
