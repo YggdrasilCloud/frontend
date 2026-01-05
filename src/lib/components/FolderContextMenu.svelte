@@ -4,11 +4,10 @@
 		y: number;
 		onRename: () => void;
 		onDelete: () => void;
-		onMove: () => void;
 		onClose: () => void;
 	}
 
-	let { x, y, onRename, onDelete, onMove, onClose }: Props = $props();
+	let { x, y, onRename, onDelete, onClose }: Props = $props();
 
 	function handleClickOutside(event: MouseEvent) {
 		const target = event.target as HTMLElement;
@@ -38,11 +37,6 @@
 		onClose();
 	}
 
-	function handleMove() {
-		onMove();
-		onClose();
-	}
-
 	function handleDelete() {
 		onDelete();
 		onClose();
@@ -53,10 +47,6 @@
 	<button class="menu-item" onclick={handleRename}>
 		<span class="menu-icon">✏️</span>
 		<span>Rename</span>
-	</button>
-	<button class="menu-item" onclick={handleMove}>
-		<span class="menu-icon">📂</span>
-		<span>Move to...</span>
 	</button>
 	<div class="menu-divider"></div>
 	<button class="menu-item danger" onclick={handleDelete}>
