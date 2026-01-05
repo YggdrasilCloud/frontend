@@ -52,6 +52,20 @@
 </script>
 
 <div class="folder-tree">
+	{#if onFolderDrop}
+		<div
+			class="root-drop-zone top"
+			class:drag-over={isRootDragOver}
+			on:dragover={handleRootDragOver}
+			on:dragleave={handleRootDragLeave}
+			on:drop={handleRootDrop}
+			role="region"
+			aria-label="Drop zone for moving folders to root"
+		>
+			<span class="drop-hint">Drop here to move to root</span>
+		</div>
+	{/if}
+
 	{#each rootFolders as folder}
 		<FolderTreeItem
 			{folder}
@@ -89,7 +103,6 @@
 	}
 
 	.root-drop-zone {
-		margin-top: var(--spacing-sm);
 		padding: var(--spacing-sm);
 		border: 1px dashed var(--color-border);
 		border-radius: var(--radius-sm);
@@ -99,6 +112,14 @@
 			opacity 0.2s,
 			background-color 0.2s,
 			border-color 0.2s;
+	}
+
+	.root-drop-zone.top {
+		margin-bottom: var(--spacing-sm);
+	}
+
+	.root-drop-zone:not(.top) {
+		margin-top: var(--spacing-sm);
 	}
 
 	.root-drop-zone:hover {
