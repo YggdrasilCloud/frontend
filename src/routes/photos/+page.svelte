@@ -1,16 +1,108 @@
 <script lang="ts">
 	import { foldersQuery } from '$lib/api/queries/folders';
 	import { createFolderMutation } from '$lib/api/mutations/createFolder';
+	import { renameFolderMutation, deleteFolderMutation } from '$lib/api/mutations/folderOperations';
+	import FolderContextMenu from '$lib/components/FolderContextMenu.svelte';
+	import RenameDialog from '$lib/components/RenameDialog.svelte';
+	import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
 	import { DateFormatter } from '$lib/domain/shared/DateFormatter';
 	import { ApiErrorFormatter } from '$lib/domain/error/ApiErrorFormatter';
 	import { FolderNameValidator } from '$lib/domain/folder/FolderNameValidator';
 	import { UploadConfiguration } from '$lib/domain/shared/UploadConfiguration';
+	import type { FolderDto } from '$lib/api/types';
 
 	const folders = foldersQuery({}, 1, 1000);
 	const createFolder = createFolderMutation();
+	const renameFolder = renameFolderMutation();
+	const deleteFolder = deleteFolderMutation();
+
+	// Context menu state
+	let contextMenu = $state<{ folder: FolderDto; x: number; y: number } | null>(null);
+
+	// Rename dialog state
+	let renameDialogOpen = $state(false);
+	let folderToRename = $state<FolderDto | null>(null);
+
+	// Delete dialog state
+	let deleteDialogOpen = $state(false);
+	let folderToDelete = $state<FolderDto | null>(null);
+
+	function handleContextMenu(event: MouseEvent, folder: FolderDto) {
+		event.preventDefault();
+		contextMenu = { folder, x: event.clientX, y: event.clientY };
+	}
+
+	function closeContextMenu() {
+		contextMenu = null;
+	}
+
+	function openRenameDialog() {
+		if (!contextMenu) return;
+		folderToRename = contextMenu.folder;
+		renameDialogOpen = true;
+		closeContextMenu();
+	}
+
+	function openDeleteDialog() {
+		if (!contextMenu) return;
+		folderToDelete = contextMenu.folder;
+		deleteDialogOpen = true;
+		closeContextMenu();
+	}
+
+	async function handleRenameConfirm(newName: string) {
+		if (!folderToRename) return;
+
+		const sanitizedName = FolderNameValidator.sanitize(newName);
+		const validation = FolderNameValidator.validate(sanitizedName);
+		if (!validation.isValid) {
+			alert(validation.error);
+			return;
+		}
+
+		try {
+			await $renameFolder.mutateAsync({
+				folderId: folderToRename.id,
+				name: sanitizedName
+			});
+			renameDialogOpen = false;
+			folderToRename = null;
+		} catch (error) {
+			console.error('Failed to rename folder:', error);
+			alert('Failed to rename folder');
+		}
+	}
+
+	function handleRenameCancel() {
+		renameDialogOpen = false;
+		folderToRename = null;
+	}
+
+	async function handleDeleteConfirm() {
+		if (!folderToDelete) return;
+
+		try {
+			await $deleteFolder.mutateAsync({
+				folderId: folderToDelete.id,
+				recursive: true
+			});
+			deleteDialogOpen = false;
+			folderToDelete = null;
+		} catch (error) {
+			console.error('Failed to delete folder:', error);
+			alert('Failed to delete folder');
+		}
+	}
+
+	function handleDeleteCancel() {
+		deleteDialogOpen = false;
+		folderToDelete = null;
+	}
 
 	// Reactive computations using domain services
-	$: errorMessage = $folders.isError ? ApiErrorFormatter.formatError($folders.error) : '';
+	const errorMessage = $derived(
+		$folders.isError ? ApiErrorFormatter.formatError($folders.error) : ''
+	);
 
 	async function handleNewFolder() {
 		const name = prompt('Enter folder name:');
@@ -47,7 +139,7 @@
 <div class="photos-home">
 	<header class="header">
 		<h1>Photo Manager</h1>
-		<button class="btn-new-folder" on:click={handleNewFolder} disabled={$createFolder.isPending}>
+		<button class="btn-new-folder" onclick={handleNewFolder} disabled={$createFolder.isPending}>
 			{$createFolder.isPending ? 'Creating...' : '+ New Folder'}
 		</button>
 	</header>
@@ -59,7 +151,7 @@
 			<div class="welcome">
 				<h2>Welcome to YggdrasilCloud!</h2>
 				<p>Get started by creating your first folder to organize your photos.</p>
-				<button class="btn-create-first" on:click={handleNewFolder}>
+				<button class="btn-create-first" onclick={handleNewFolder}>
 					📁 Create Your First Folder
 				</button>
 				<details class="error-details">
@@ -74,14 +166,18 @@
 				<div class="welcome">
 					<h2>Welcome to YggdrasilCloud!</h2>
 					<p>Get started by creating your first folder to organize your photos.</p>
-					<button class="btn-create-first" on:click={handleNewFolder}>
+					<button class="btn-create-first" onclick={handleNewFolder}>
 						📁 Create Your First Folder
 					</button>
 				</div>
 			{:else}
 				<div class="folders-grid">
 					{#each $folders.data.data as folder}
-						<a href="/photos/{folder.id}" class="folder-card">
+						<a
+							href="/photos/{folder.id}"
+							class="folder-card"
+							oncontextmenu={(e) => handleContextMenu(e, folder)}
+						>
 							<div class="folder-icon">📁</div>
 							<div class="folder-info">
 								<h3>{folder.name}</h3>
@@ -94,6 +190,34 @@
 		{/if}
 	</main>
 </div>
+
+{#if contextMenu}
+	<FolderContextMenu
+		x={contextMenu.x}
+		y={contextMenu.y}
+		onRename={openRenameDialog}
+		onDelete={openDeleteDialog}
+		onClose={closeContextMenu}
+	/>
+{/if}
+
+<RenameDialog
+	open={renameDialogOpen}
+	currentName={folderToRename?.name ?? ''}
+	onConfirm={handleRenameConfirm}
+	onCancel={handleRenameCancel}
+/>
+
+<ConfirmDialog
+	open={deleteDialogOpen}
+	title="Delete Folder"
+	message={`Are you sure you want to delete "${folderToDelete?.name}"? This will permanently delete all photos and subfolders inside.`}
+	confirmLabel="Delete"
+	cancelLabel="Cancel"
+	danger={true}
+	onConfirm={handleDeleteConfirm}
+	onCancel={handleDeleteCancel}
+/>
 
 <style>
 	.photos-home {
